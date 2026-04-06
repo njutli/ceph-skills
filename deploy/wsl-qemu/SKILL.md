@@ -145,11 +145,185 @@ sudo sysctl -w net.ipv4.ip_forward=1
 
 ---
 
-## 四、方案 A: vstart.sh (最快上手)
+## 四、三种方案对比 (从内核存储栈视角)
+
+从你熟悉的 Linux 内核存储栈视角来理解，Ceph 本质上是一个**用户态的分布式存储栈**：
+
+```
+内核存储栈（你熟悉的）:
+  VFS → 文件系统(ext4) → 块层(bio) → 驱动(nvme) → 硬件(SSD)
+
+Ceph 存储栈（用户态分布式）:
+  客户端(VFS/librados) → 网络(TCP/RDMA) → OSD(BlueStore) → 裸盘
+```
+
+内核存储栈的所有层都在**同一个内核地址空间**；Ceph 把这些层拆到了**多个主机、多个进程**中，通过网络把它们粘合起来。
+
+### 4.1 角度一：主机结点个数及结点间关系
+
+| 维度 | 方案A: vstart.sh | 方案B: cephadm 单节点 | 方案C: QEMU 多节点 |
+|------|-----------------|---------------------|-------------------|
+| **主机结点** | 1 个（WSL 本身） | 1 个（WSL 本身） | 3 个（3 个 QEMU VM） |
+| **网络** | loopback (127.0.0.1) | 容器网络 (10.89.0.x) | 虚拟网络 (192.168.100.0/24) |
+| **故障域** | 无（单机） | 无（单机） | 有（可模拟节点宕机、网络分区） |
+| **类比内核** | 像在一个内核模块里跑所有层 | 像用 namespace 隔离的各层 | 像多台机器通过 SAN/NAS 互联 |
+
+#### 方案A (vstart.sh) — 1 个主机，进程间本地通信
+
+```
+WSL (唯一主机)
+  ├── ceph-mon.a   (127.0.0.1:6789)
+  ├── ceph-mgr.x   (127.0.0.1:6800)
+  ├── ceph-osd.0   (127.0.0.1:6801)
+  ├── ceph-osd.1   (127.0.0.1:6802)
+  └── ceph-osd.2   (127.0.0.1:6803)
+
+数据流:
+  客户端 → MON (127.0.0.1:6789) 获取 OSDMap
+  客户端 → OSD.0 (127.0.0.1:6801) 写入数据
+  OSD.0 → OSD.1 (127.0.0.1:6802) 复制数据 (localhost TCP)
+  OSD.0 → OSD.2 (127.0.0.1:6803) 复制数据 (localhost TCP)
+```
+
+所有进程跑在同一个 WSL 实例中，通过 **loopback TCP** 通信。没有真正的网络延迟，也没有网络故障。类比内核：就像把 VFS、ext4、块层、驱动层拆成 5 个用户态进程，通过 `127.0.0.1` 互相发 bio。
+
+#### 方案B (cephadm 单节点) — 1 个主机，容器隔离
+
+```
+WSL (唯一主机)
+  ├── container: mon.node1    (容器网络 10.89.0.x)
+  ├── container: mgr.node1    (容器网络 10.89.0.x)
+  ├── container: osd.0        (容器网络 10.89.0.x)
+  ├── container: osd.1        (容器网络 10.89.0.x)
+  └── container: osd.2        (容器网络 10.89.0.x)
+
+数据流:
+  客户端 → MON (容器IP) 获取 OSDMap
+  客户端 → OSD.0 (容器IP) 写入数据
+  OSD.0 → OSD.1 (容器IP) 复制数据 (容器间 TCP)
+  OSD.0 → OSD.2 (容器IP) 复制数据 (容器间 TCP)
+```
+
+每个守护进程在独立的 **Podman 容器** 中，有独立的 network namespace。容器间通过虚拟网桥通信。类比内核：就像用 cgroup + namespace 把 VFS、ext4、块层隔离到不同的容器里，虽然物理上在同一台机器，但网络栈是隔离的。
+
+#### 方案C (QEMU 多节点) — 3 个主机，真实网络
+
+```
+node1 (VM1: 192.168.100.10)     node2 (VM2: 192.168.100.11)     node3 (VM3: 192.168.100.12)
+  ├── ceph-mon.a                  ├── ceph-mon.b                  ├── ceph-mon.c
+  ├── ceph-mgr.x                  ├── ceph-mgr.y                  │
+  └── ceph-osd.2                  ├── ceph-osd.0                  └── ceph-osd.1
+
+数据流:
+  客户端 → MON (192.168.100.10:6789) 获取 OSDMap
+  客户端 → OSD.0 (192.168.100.11) 写入数据
+  OSD.0 → OSD.1 (192.168.100.12:6803) 复制数据 (跨 VM TCP)
+  OSD.0 → OSD.2 (192.168.100.10:6802) 复制数据 (跨 VM TCP)
+```
+
+3 个独立 VM，各有完整的内核、网络栈。数据通过 **虚拟网卡 → WSL 网桥 → 目标 VM** 传输。类比内核：就像 3 台物理机通过以太网互联，每台运行自己的存储栈，通过 RDMA/TCP 同步数据。
+
+### 4.2 角度二：单结点内部进程及关系
+
+从内核存储栈视角，Ceph 的守护进程可以这样类比：
+
+| Ceph 进程 | 内核存储栈类比 | 作用 |
+|-----------|--------------|------|
+| **ceph-mon** | 超级块 + mount 信息 + 设备拓扑 | 维护集群"元数据真相"（哪些 OSD 在线、数据在哪） |
+| **ceph-mgr** | sysfs + debugfs + 性能计数器 | 集群管理、监控、Dashboard |
+| **ceph-osd** | 块设备驱动 + 文件系统 + I/O 调度器 | 实际存储数据、处理复制、scrub |
+| **ceph-mds** | 内核 dentry/inode 缓存 | CephFS 元数据服务（仅文件存储需要） |
+
+#### 方案A (vstart.sh) — 6 个进程
+
+```
+WSL 进程列表:
+  ceph-mon    × 1   (mon.a)        — 集群元数据
+  ceph-mgr    × 1   (mgr.x)        — 集群管理
+  ceph-osd    × 3   (osd.0/1/2)    — 数据存储
+
+进程关系:
+  ceph-mon ←→ ceph-mgr    : mgr 向 mon 注册，报告状态
+  ceph-mon ←→ ceph-osd    : mon 下发 OSDMap，osd 上报心跳
+  ceph-osd ←→ ceph-osd    : 数据复制、心跳、peering
+  ceph-mgr ←→ ceph-osd    : 收集性能指标
+
+类比内核:
+  mon  ≈ 维护全局 mount table + 设备拓扑的管理进程
+  mgr  ≈ 收集 /sys/block/* 统计信息的监控进程
+  osd  ≈ 每块盘一个 nvme 驱动进程，互相之间通过网络同步数据
+```
+
+#### 方案B (cephadm 单节点) — 6 个容器进程
+
+```
+WSL 容器列表 (每个容器 1 个主进程):
+  podman run ceph-mon    × 1   — 容器内运行 ceph-mon
+  podman run ceph-mgr    × 1   — 容器内运行 ceph-mgr
+  podman run ceph-osd    × 3   — 容器内运行 ceph-osd
+
+进程关系: 与方案A相同，但多了容器边界:
+  - 每个进程有独立的 /etc/ceph/ceph.conf
+  - 每个进程有独立的 keyring (认证密钥)
+  - 数据目录通过 volume mount 映射到宿主机
+  - 进程间通过容器网络通信 (有 NAT)
+
+类比内核:
+  与方案A相同，但每个"驱动进程"跑在独立的 mount namespace 中
+  类似于用 chroot 隔离的多个驱动实例
+```
+
+#### 方案C (QEMU 多节点) — 每 VM 2-3 个进程
+
+```
+node1 (VM1):
+  ceph-mon.a    × 1   — MON (集群元数据)
+  ceph-mgr.x    × 1   — MGR (集群管理)
+  ceph-osd.2    × 1   — OSD (存储数据)
+
+node2 (VM2):
+  ceph-mon.b    × 1   — MON (集群元数据)
+  ceph-mgr.y    × 1   — MGR (standby)
+  ceph-osd.0    × 1   — OSD (存储数据)
+
+node3 (VM3):
+  ceph-mon.c    × 1   — MON (集群元数据)
+  ceph-osd.1    × 1   — OSD (存储数据)
+
+进程关系:
+  跨 VM:
+    mon.a ←→ mon.b ←→ mon.c   : Paxos 共识 (选举 leader，同步 monmap/osdmap)
+    osd.0 ←→ osd.1 ←→ osd.2   : 数据复制、心跳、peering
+    mon   ←→ osd              : 下发 OSDMap，上报心跳
+
+  VM 内:
+    mon ←→ mgr   : mgr 向本地 mon 注册
+    mon ←→ osd   : 本地通信 (同 VM 内 TCP)
+
+类比内核:
+  3 台机器，每台有自己的存储驱动 (osd)
+  3 台机器各有一个拓扑管理器 (mon)，通过 Paxos 达成一致
+  数据写入时: 客户端 → 主 osd → 通过网络复制到另 2 台的 osd
+  这类似于 3 台服务器通过 SAN 做同步复制，但 Ceph 是在用户态用 TCP 做的
+```
+
+### 4.3 核心差异总结
+
+| 维度 | 方案A | 方案B | 方案C |
+|------|-------|-------|-------|
+| **进程隔离** | 无（同一用户空间） | 容器隔离（namespace） | VM 隔离（完整内核） |
+| **网络** | loopback | 容器网桥 | 虚拟网卡 |
+| **MON 共识** | 1 个 MON（无共识） | 1 个 MON（无共识） | 3 个 MON（Paxos 共识） |
+| **OSD 复制** | 本地 TCP 复制 | 容器 TCP 复制 | 跨 VM TCP 复制 |
+| **可模拟故障** | 只能 kill 进程 | 只能 stop 容器 | 可关 VM、断网、kill 进程 |
+
+---
+
+## 五、方案 A: vstart.sh (最快上手)
 
 vstart.sh 是 Ceph 源码树中的开发集群脚本，最适合快速理解数据流。
 
-### 4.1 编译 Ceph
+### 5.1 编译 Ceph
 
 ```bash
 cd /home/i_ingfeng/ceph
@@ -169,12 +343,12 @@ sudo apt install -y \
 # 创建构建目录
 mkdir build && cd build
 
-# 配置 (最小化编译，仅编译必要组件)
+# 配置 (包含 MDS 以支持 CephFS)
 cmake .. \
     -DCMAKE_BUILD_TYPE=RelWithDebInfo \
     -DWITH_RADOSGW=OFF \
     -DWITH_MGR=ON \
-    -DWITH_MDS=OFF \
+    -DWITH_MDS=ON \
     -DWITH_KVS=OFF \
     -DWITH_SPDK=OFF \
     -DWITH_JAEGER=OFF \
@@ -185,14 +359,15 @@ cmake .. \
 ninja -j$(nproc)
 ```
 
-### 4.2 启动开发集群
+### 5.2 启动开发集群
 
 ```bash
 cd /home/i_ingfeng/ceph/build
 
-# 启动最小集群 (1 MON, 1 MGR, 3 OSD)
+# 启动最小集群 (1 MON, 1 MGR, 3 OSD, 1 MDS)
 ../src/vstart.sh -n -d \
     -m 127.0.0.1 \
+    --mds \
     --without-dashboard \
     --bluestore
 
@@ -200,10 +375,11 @@ cd /home/i_ingfeng/ceph/build
 #   -n        : 不重新编译
 #   -d        : 使用 debug 模式
 #   -m        : MON 地址
+#   --mds     : 启动 MDS 守护进程 (支持 CephFS)
 #   --bluestore : 使用 BlueStore (默认)
 ```
 
-### 4.3 验证集群
+### 5.3 验证集群
 
 ```bash
 # 设置环境变量
@@ -220,6 +396,7 @@ ceph -s
 #   services:
 #     mon: 1 daemons, quorum a
 #     mgr: x(active)
+#     mds: cephfs:1 {0=a=up:active}
 #     osd: 3 osds: 3 up, 3 in
 #   data:
 #     pools:   1 pools, 1 pgs
@@ -228,7 +405,7 @@ ceph -s
 #     pg_state:  1 active+clean
 ```
 
-### 4.4 基本数据流验证
+### 5.4 基本数据流验证
 
 ```bash
 # 1. 创建测试 pool
@@ -249,7 +426,7 @@ rados -p testpool get myobject -
 rados -p testpool rm myobject
 ```
 
-### 4.5 观察数据流
+### 5.5 观察数据流
 
 ```bash
 # 实时查看集群事件
@@ -271,7 +448,126 @@ ceph -w
 ../src/run-osd.sh 1
 ```
 
-### 4.6 停止集群
+### 5.6 CephFS 客户端流程 (方案A)
+
+**为什么需要 MDS？** Ceph 提供三种存储接口，MDS 仅用于 CephFS（文件存储）：
+
+```
+Ceph 三种接口:
+  ├── RBD (块存储)  → 不需要 MDS (直接对象读写)
+  ├── RGW (对象存储) → 不需要 MDS (REST API → 对象)
+  └── CephFS (文件存储) → 需要 MDS (管理目录树/inode)
+```
+
+MDS 在内核存储栈视角的类比：
+
+```
+内核文件系统 (ext4):
+  VFS (open/read/write)
+    → ext4_lookup()  (查找 dentry)
+    → ext4_iget()    (加载 inode)
+    → ext4_file_read() (读数据)
+
+  所有元数据 (dentry/inode) 都在本地磁盘的 inode table 里
+  所有缓存 (dcache/icache) 都在本地内核内存里
+
+CephFS:
+  VFS (open/read/write)
+    → CephFS 客户端 (内核模块 fs/ceph/ 或 ceph-fuse)
+    → 向 MDS 请求元数据 (lookup/getattr)
+    → MDS 返回 inode/dentry 信息
+    → 客户端缓存元数据，后续操作本地完成
+    → 数据 I/O 直接发 OSD (不经过 MDS)
+
+  元数据 (dentry/inode) 在 MDS 进程的内存里
+  缓存分布在 MDS + 所有客户端
+```
+
+**MDS 的核心职责：**
+
+| 职责 | 内核类比 | MDS 实现 |
+|------|---------|---------|
+| **目录树管理** | VFS dcache + 磁盘目录块 | 内存中的目录树，分片 (fragment) 存储 |
+| **Inode 管理** | VFS icache + 磁盘 inode table | 内存中的 inode 对象，带版本号 |
+| **分布式缓存一致性** | 本地缓存无需一致性 | **Capability 系统** (核心机制) |
+| **动态子树分区** | 单文件系统单挂载点 | 目录子树可动态迁移到不同 MDS |
+| **快照** | 快照子卷 | 快照元数据管理 |
+
+**在方案A中启用 CephFS：**
+
+```bash
+# 1. 创建 CephFS 需要的 metadata pool 和 data pool
+ceph osd pool create cephfs_metadata 8 8
+ceph osd pool create cephfs_data 8 8
+
+# 2. 创建 CephFS 文件系统 (自动关联 MDS)
+ceph fs new myfs cephfs_metadata cephfs_data
+
+# 3. 验证 MDS 状态
+ceph fs status
+# 预期: myfs - 1 clients, 1 MDS (a: active)
+
+# 4. 挂载 CephFS (内核客户端)
+sudo mkdir -p /mnt/cephfs
+sudo mount -t ceph 127.0.0.1:6789:/ /mnt/cephfs \
+    -o name=admin,secret=$(ceph auth get-key client.admin)
+
+# 5. 验证挂载
+df -h /mnt/cephfs
+echo "hello cephfs" > /mnt/cephfs/test.txt
+cat /mnt/cephfs/test.txt
+```
+
+**CephFS 数据流详解 (方案A)：**
+
+```
+mount -t ceph 127.0.0.1:6789:/ /mnt/cephfs
+
+阶段 1: 挂载 (仅一次)
+  客户端 → MON (127.0.0.1:6789)
+    获取: monmap, osdmap, mdsmap
+  客户端 → MDS (127.0.0.1:6804)
+    建立会话，获取根 inode (CEPH_INO_ROOT = 1)
+    MDS 授予 Capability (FILE_CACHE, FILE_RD)
+
+阶段 2: 元数据操作 (经过 MDS)
+  open("/mnt/cephfs/foo")
+    → 客户端检查本地缓存是否有 foo 的 inode
+    → 如果没有: 向 MDS 发送 lookup 请求 (127.0.0.1:6804)
+    → MDS 返回 inode 信息 + caps
+    → 客户端缓存 inode
+
+  ls /mnt/cephfs/
+    → 向 MDS 发送 readdir 请求
+    → MDS 返回目录条目列表
+    → 客户端缓存 dentry
+
+阶段 3: 数据 I/O (不经过 MDS!)
+  read("/mnt/cephfs/foo")
+    → 客户端从 inode 获取文件 layout (条带化参数)
+    → 计算文件偏移对应的 RADOS 对象
+    → 通过 CRUSH 计算对象在哪些 OSD 上
+    → 直接向 OSD 发送读请求 (127.0.0.1:6801/6802/6803)
+
+  write("/mnt/cephfs/foo")
+    → 计算对象位置
+    → 直接向 OSD 发送写请求 (不经过 MDS!)
+    → 如果写改变了文件大小: 向 MDS 发送 cap flush 更新 inode size
+
+阶段 4: 缓存一致性 (Capability 系统)
+  场景: 客户端 A 和 B 同时访问同一文件
+
+  1. 客户端 A 打开文件 → MDS 授予 FILE_CACHE cap
+  2. 客户端 A 本地缓存元数据
+  3. 客户端 B 也要打开同一文件 → MDS 检测到冲突
+  4. MDS 向客户端 A 发送 cap revoke
+  5. 客户端 A 刷盘脏数据、失效缓存 → 回复 MDS
+  6. MDS 将 cap 授予客户端 B
+
+  这就像内核里的 inode 锁 + 页缓存回写，但跨网络、跨客户端
+```
+
+**停止集群：**
 
 ```bash
 ../src/stop.sh
@@ -279,9 +575,9 @@ ceph -w
 
 ---
 
-## 五、方案 B: cephadm 单节点部署
+## 六、方案 B: cephadm 单节点部署
 
-### 5.1 安装 Ceph 包
+### 6.1 安装 Ceph 包
 
 ```bash
 # 添加 Ceph 仓库密钥和源
@@ -292,7 +588,7 @@ sudo apt update
 sudo apt install -y cephadm
 ```
 
-### 5.2 Bootstrap 单节点集群
+### 6.2 Bootstrap 单节点集群
 
 ```bash
 # 获取 WSL2 IP
@@ -308,7 +604,7 @@ sudo cephadm bootstrap --mon-ip 172.24.80.10 --single-host-defaults
 #   mgr_standby_modules = False    (禁用 standby 模块)
 ```
 
-### 5.3 添加 OSD
+### 6.3 添加 OSD
 
 ```bash
 # 创建文件模拟磁盘 (每个 10GB)
@@ -327,7 +623,7 @@ sudo ceph orch daemon add osd node1:/var/local/osd1
 sudo ceph orch daemon add osd node1:/var/local/osd2
 ```
 
-### 5.4 验证
+### 6.4 验证
 
 ```bash
 # 使用 cephadm shell 进入 Ceph 环境
@@ -339,7 +635,7 @@ ceph osd tree
 ceph osd df
 ```
 
-### 5.5 基本操作
+### 6.5 基本操作
 
 ```bash
 # 创建 pool
@@ -362,11 +658,103 @@ ceph -w
 ceph osd in 0
 ```
 
+### 6.6 CephFS 客户端流程 (方案B)
+
+**在方案B中启用 CephFS：**
+
+```bash
+sudo cephadm shell
+
+# 1. 创建 CephFS 文件系统 (cephadm 会自动启动 MDS)
+ceph fs volume create myfs
+
+# 2. 验证 MDS 已启动
+ceph fs status
+# 预期: myfs - 0 clients, 1 MDS (node1: active)
+
+ceph orch ls
+# 预期: 看到 mds.myfs 服务
+
+# 3. 获取 admin key
+ceph auth get-key client.admin > /tmp/ceph.admin.key
+```
+
+**在 WSL 中挂载 CephFS：**
+
+```bash
+# 1. 确保 WSL 安装了 ceph-common
+sudo apt install -y ceph-common
+
+# 2. 复制 keyring 到 WSL
+sudo cephadm shell -- ceph auth get-key client.admin | sudo tee /etc/ceph/ceph.client.admin.keyring
+
+# 3. 获取 MON 地址 (容器 IP)
+sudo cephadm shell -- ceph mon dump | grep mon
+
+# 4. 挂载 CephFS
+sudo mkdir -p /mnt/cephfs
+sudo mount -t ceph <MON_CONTAINER_IP>:6789:/ /mnt/cephfs \
+    -o name=admin,secret=$(cat /etc/ceph/ceph.client.admin.keyring)
+
+# 5. 验证
+echo "hello from cephadm" > /mnt/cephfs/test.txt
+cat /mnt/cephfs/test.txt
+```
+
+**CephFS 数据流详解 (方案B)：**
+
+```
+                    方案B CephFS 数据流
+
+WSL 宿主机 (客户端)
+  │
+  │ mount -t ceph <MON_IP>:6789:/ /mnt/cephfs
+  │
+  ├─→ MON 容器 (10.89.0.x:6789)
+  │     获取 monmap, osdmap, mdsmap
+  │
+  ├─→ MDS 容器 (10.89.0.y:6800)
+  │     建立会话，获取根 inode
+  │     授予 Capability
+  │
+  └─→ OSD 容器 (10.89.0.z:6801/6802/6803)
+        直接数据 I/O (不经过 MDS)
+
+容器网络通信:
+  客户端 → MON: 容器网桥 (br-podman) TCP
+  客户端 → MDS: 容器网桥 (br-podman) TCP
+  客户端 → OSD: 容器网桥 (br-podman) TCP
+  OSD → OSD:   容器网桥 (br-podman) TCP (数据复制)
+
+与方案A的差异:
+  - 网络: 容器网桥 vs loopback
+  - 隔离: 每个进程独立 namespace
+  - 认证: 每个容器独立 keyring
+  - 但数据流逻辑完全相同
+```
+
+**关键理解：MDS 只在元数据操作时参与**
+
+```
+元数据操作 (经过 MDS):
+  open()    → MDS lookup
+  getattr() → MDS getattr
+  readdir() → MDS readdir
+  rename()  → MDS rename
+  unlink()  → MDS unlink
+  mkdir()   → MDS mkdir
+
+数据 I/O (不经过 MDS):
+  read()    → 客户端 → OSD (直接)
+  write()   → 客户端 → OSD (直接)
+  mmap()    → 客户端 → OSD (直接)
+```
+
 ---
 
-## 六、方案 C: QEMU 多节点部署
+## 七、方案 C: QEMU 多节点部署
 
-### 6.1 准备云镜像
+### 7.1 准备云镜像
 
 ```bash
 # 下载 Ubuntu Cloud Image
@@ -382,7 +770,7 @@ for i in 1 2 3; do
 done
 ```
 
-### 6.2 创建 cloud-init 配置
+### 7.2 创建 cloud-init 配置
 
 ```bash
 # 为每个节点创建 user-data
@@ -428,7 +816,7 @@ for i in 1 2 3; do
 done
 ```
 
-### 6.3 启动 QEMU 虚拟机
+### 7.3 启动 QEMU 虚拟机
 
 ```bash
 # 创建启动脚本
@@ -467,7 +855,7 @@ chmod +x start-nodes.sh
 ./start-nodes.sh
 ```
 
-### 6.4 连接节点
+### 7.4 连接节点
 
 ```bash
 # 等待 cloud-init 完成 (约 1-2 分钟)
@@ -479,7 +867,7 @@ ssh -p 2222 -o StrictHostKeyChecking=no ceph@localhost  # node2
 ssh -p 2223 -o StrictHostKeyChecking=no ceph@localhost  # node3
 ```
 
-### 6.5 在 QEMU 集群上部署 Ceph
+### 7.5 在 QEMU 集群上部署 Ceph
 
 ```bash
 # 在 node1 上安装 cephadm
@@ -516,9 +904,129 @@ sudo ceph orch ls
 sudo ceph orch ps
 ```
 
+### 7.6 CephFS 客户端流程 (方案C)
+
+**在方案C中启用 CephFS：**
+
+```bash
+# SSH 到 node1
+ssh -p 2221 ceph@localhost
+
+# 1. 部署 MDS (在 node1 上)
+sudo ceph orch apply mds myfs --placement="1 node1"
+
+# 2. 创建 CephFS 需要的 pools
+sudo ceph osd pool create cephfs_metadata 16 16
+sudo ceph osd pool create cephfs_data 16 16
+
+# 3. 创建 CephFS 文件系统
+sudo ceph fs new myfs cephfs_metadata cephfs_data
+
+# 4. 验证 MDS 状态
+sudo ceph fs status
+# 预期: myfs - 0 clients, 1 MDS (node1: active)
+
+sudo ceph orch ls
+# 预期: 看到 mds.myfs 服务
+```
+
+**从 WSL 挂载 CephFS (跨 VM 访问)：**
+
+```bash
+# 1. 确保 WSL 安装了 ceph-common
+sudo apt install -y ceph-common
+
+# 2. 从 node1 获取 admin key
+ssh -p 2221 ceph@localhost "sudo ceph auth get-key client.admin" > /tmp/ceph.admin.key
+
+# 3. 挂载 CephFS (通过 node1 的 MON)
+sudo mkdir -p /mnt/cephfs
+sudo mount -t ceph 192.168.100.10:6789:/ /mnt/cephfs \
+    -o name=admin,secret=$(cat /tmp/ceph.admin.key)
+
+# 4. 验证
+echo "hello from QEMU cluster" > /mnt/cephfs/test.txt
+cat /mnt/cephfs/test.txt
+```
+
+**CephFS 数据流详解 (方案C)：**
+
+```
+                    方案C CephFS 数据流
+
+WSL 宿主机 (客户端: 172.24.80.10)
+  │
+  │ mount -t ceph 192.168.100.10:6789:/ /mnt/cephfs
+  │
+  ├─→ node1 VM (192.168.100.10)
+  │     ├── ceph-mon.a   : 获取 monmap, osdmap, mdsmap
+  │     ├── ceph-mgr.x   : 集群管理
+  │     └── ceph-mds.a   : 元数据服务 (lookup, getattr, cap grant)
+  │
+  ├─→ node2 VM (192.168.100.11)
+  │     ├── ceph-mon.b   : MON 备份 (Paxos 共识)
+  │     ├── ceph-mgr.y   : MGR standby
+  │     └── ceph-osd.0   : 数据 I/O (直接)
+  │
+  └─→ node3 VM (192.168.100.12)
+        ├── ceph-mon.c   : MON 备份 (Paxos 共识)
+        └── ceph-osd.1   : 数据 I/O (直接)
+
+跨 VM 网络通信:
+  客户端 → MON (node1): WSL → 虚拟网桥 → node1 virtio-net (TCP 6789)
+  客户端 → MDS (node1): WSL → 虚拟网桥 → node1 virtio-net (TCP 6804)
+  客户端 → OSD (node2): WSL → 虚拟网桥 → node2 virtio-net (TCP 6801)
+  客户端 → OSD (node3): WSL → 虚拟网桥 → node3 virtio-net (TCP 6802)
+
+  OSD 间复制:
+    OSD.0 (node2) → OSD.1 (node3): node2 → 虚拟网桥 → node3 (TCP)
+    OSD.0 (node2) → OSD.2 (node1): node2 → 虚拟网桥 → node1 (TCP)
+
+  MON 间 Paxos:
+    mon.a (node1) ↔ mon.b (node2) ↔ mon.c (node3): 跨 VM TCP
+
+与方案A/B的差异:
+  - 网络: 真实虚拟网络 vs loopback/容器网桥
+  - 延迟: 有真实网络延迟 (ms 级)
+  - 故障域: 可模拟 VM 宕机、网络分区
+  - Paxos: 3 个 MON 真实共识 (方案A/B 只有 1 个 MON)
+  - 数据复制: 跨 VM TCP 复制 (最接近生产环境)
+```
+
+**模拟真实故障场景 (仅方案C能做到)：**
+
+```bash
+# 场景 1: MDS 节点宕机
+# 在 WSL 中关闭 node1 VM
+kill $(cat node1.pid)
+
+# 观察:
+# - MDS 变为 down
+# - 已挂载的 CephFS 客户端: 元数据操作卡住 (lookup/open 等)
+# - 数据 I/O (read/write) 仍然正常 (不经过 MDS)
+# - MON quorum 仍然正常 (2/3)
+
+# 恢复 node1
+./start-nodes.sh  # 重新启动 node1
+
+# 场景 2: 网络分区 (模拟)
+# 在 node2 上阻断到 node3 的网络
+ssh -p 2222 ceph@localhost
+sudo iptables -A OUTPUT -d 192.168.100.12 -j DROP
+
+# 观察:
+# - OSD.0 (node2) 和 OSD.1 (node3) 之间的心跳断开
+# - PG 状态变化: active+clean → active+degraded
+# - MON quorum 仍然正常 (node1+node2 或 node1+node3)
+# - 数据仍然可读写 (通过剩余的 OSD)
+
+# 恢复网络
+sudo iptables -D OUTPUT -d 192.168.100.12 -j DROP
+```
+
 ---
 
-## 七、学习路线详解
+## 八、学习路线详解
 
 ### 阶段 1: 基本数据流 (vstart.sh)
 
@@ -605,6 +1113,7 @@ Day 6-7: 理解守护进程
   │
   └── ceph-mds: 元数据服务 (CephFS 需要)
       ├── 分布式缓存
+      ├── Capability 系统
       └── 动态子树分区
 ```
 
@@ -622,6 +1131,12 @@ Day 8-9: 故障模拟
   │   ├── 观察 PG 降级
   │   ├── 验证数据可读性
   │   └── 观察自动恢复
+  │
+  ├── MDS 故障
+  │   ├── 停止 MDS
+  │   ├── 观察元数据操作卡住
+  │   ├── 验证数据 I/O 仍然正常
+  │   └── 恢复 MDS
   │
   └── 网络分区模拟
       ├── 使用 iptables 阻断节点间通信
@@ -656,6 +1171,11 @@ Day 12: 性能测试
   │   ├── rbd map testimg
   │   └── fio 测试
   │
+  ├── CephFS 性能测试
+  │   ├── mount -t ceph ...
+  │   ├── fio --directory=/mnt/cephfs ...
+  │   └── mdtest (元数据性能)
+  │
   └── 监控指标
       ├── ceph osd perf
       ├── ceph df detail
@@ -664,7 +1184,7 @@ Day 12: 性能测试
 
 ---
 
-## 八、常用调试命令速查
+## 九、常用调试命令速查
 
 ### 集群状态
 
@@ -689,6 +1209,11 @@ ceph osd perf              # OSD 性能
 ceph pg stat               # PG 统计
 ceph pg dump               # PG 详细信息
 ceph pg dump_stuck         # 卡住的 PG
+
+# MDS 状态
+ceph fs status             # CephFS 状态
+ceph fs dump               # CephFS 详细信息
+ceph mds stat              # MDS 状态
 ```
 
 ### 数据操作
@@ -729,7 +1254,7 @@ ceph --admin-daemon /var/run/ceph/ceph-mon.node1.asok config show
 
 ---
 
-## 九、关键代码位置
+## 十、关键代码位置
 
 | 功能 | 文件 | 说明 |
 |------|------|------|
@@ -747,11 +1272,11 @@ ceph --admin-daemon /var/run/ceph/ceph-mon.node1.asok config show
 
 ---
 
-## 十、常见问题与陷阱
+## 十一、常见问题与陷阱
 
 ### Q1: WSL2 中 QEMU 性能很差怎么办？
 
-**A**: 
+**A**:
 1. 确保启用了 KVM: `ls -la /dev/kvm`
 2. WSL2 默认不支持 KVM，需要使用 WSLg 或 Windows 11 的嵌套虚拟化
 3. 替代方案: 使用 Docker 容器代替 QEMU VM (`docker run` 多个 Ubuntu 容器)
@@ -792,3 +1317,18 @@ sleep 120
 **A**:
 - **vstart.sh**: 开发工具，不依赖 systemd/container，直接启动进程。适合调试代码。
 - **cephadm**: 生产部署工具，使用容器 (Podman/Docker) 管理守护进程。适合学习运维。
+
+### Q6: CephFS 挂载后元数据操作卡住但数据 I/O 正常？
+
+**A**: 这是 MDS 故障的典型症状。MDS 只负责元数据操作 (lookup/open/getattr/readdir)，数据 I/O (read/write) 直接走客户端 → OSD。检查 MDS 状态：
+```bash
+ceph mds stat
+ceph fs status
+```
+
+### Q7: 为什么 CephFS 需要 MDS 而 RBD/RGW 不需要？
+
+**A**:
+- **RBD**: 块设备接口，只有读写操作，直接映射到对象 → 不需要元数据服务
+- **RGW**: 对象存储接口，对象名就是 key，直接计算位置 → 不需要元数据服务
+- **CephFS**: 文件系统接口，有目录树、inode、权限、硬链接等复杂元数据 → 需要 MDS 管理
