@@ -252,7 +252,20 @@ src/
     └── Finisher.cc   # 异步回调
 ```
 
-## 9. 10年演进 (2015-2025)
+## 9. MDS 核心数据结构
+
+MDS 管理文件系统元数据的核心缓存对象：
+
+| 对象 | 说明 | 定义位置 |
+|------|------|----------|
+| `MDSCacheObject` | 基类：引用计数、状态管理、等待队列 | `src/mds/MDSCacheObject.h` |
+| `CInode` | Inode 缓存：文件/目录属性、快照、capability | `src/mds/CInode.h` |
+| `CDentry` | 目录项：文件名到 inode 的映射，三种链接类型 | `src/mds/CDentry.h` |
+| `CDir` | 目录分片：支持大目录负载均衡和子树分区 | `src/mds/CDir.h` |
+
+详细说明请参考 [MDS 缓存核心数据结构](../mds-cache-objects/SKILL.md)。
+
+## 10. 10年演进 (2015-2025)
 
 | 年份 | 版本 | 特性 | 解决的问题 |
 |------|------|------|-----------|
@@ -268,7 +281,7 @@ src/
 | 2024 | Squid | 内核 CephFS idmapped mounts | 容器化支持 |
 | 2025 | TBD | Crimson OSD 成熟 | Seastar 高性能 OSD |
 
-## 10. 与其他特性的关系
+## 11. 与其他特性的关系
 
 ```
 RADOS (底层对象存储)
@@ -288,6 +301,25 @@ RADOS (底层对象存储)
             ├── librados: 直接使用
             ├── libcephfs: 通过 ObjectCacher 间接使用
             └── librbd: 直接使用
+
+CephFS 子系统关系：
+  │
+  └── MDS (元数据服务器)
+       │
+       ├── MDCache: 管理所有缓存对象 (CInode/CDentry/CDir)
+       │    ├── inodes: map<vinodeno_t, CInode*>
+       │    ├── dentries: map<dentry_key_t, CDentry*>
+       │    └── dirs: map<dirfrag_t, CDir*>
+       │
+       ├── Locker: 分布式锁管理
+       │    ├── SimpleLock: 简单锁 (DN 锁、file 锁)
+       │    └── ScatterLock: 散列锁 (nest 锁、pg stats)
+       │
+       ├── Migrator: 子树迁移
+       │    └── encode/decode CInode/CDir/CDentry
+       │
+       └── Server: 处理客户端请求
+            └── 调用 MDCache 方法操作缓存对象
 ```
 
 ## 11. 参考文献与资源
