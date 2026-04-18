@@ -29,6 +29,7 @@
 
 | Skill | 内容 | 行数 |
 |-------|------|------|
+| [OSD I/O 路径](osd/osd-io-path/SKILL.md) | 线程分布、写入请求追踪、ShardedOpWQ调度、BlueStore写入链路 | - |
 | [PG Peering 状态机](osd/pg-peering/SKILL.md) | 完整状态机、GetInfo/GetLog/GetMissing、权威OSD选择、恢复流程 | 448 |
 | [BlueStore 引擎](osd/bluestore/SKILL.md) | 磁盘布局、Onode/Blob映射、写入路径、Allocator、压缩 | 445 |
 | [Scrubbing 机制](osd/scrub/SKILL.md) | 浅层/深层Scrub、状态机、副本哈希比较、调度策略 | 329 |
@@ -49,7 +50,9 @@
 
 | Skill | 内容 | 行数 |
 |-------|------|------|
+| [MDS 请求路径](cephfs/mds-request-path/SKILL.md) | 线程分布、客户端请求追踪、异步续跑模式、子系统消息路由 | - |
 | [MDS Capability 系统](cephfs/mds-capability/SKILL.md) | Cap位定义、授权/撤销/释放、分布式锁、内核cap管理 | 400 |
+| [MDS 缓存核心数据结构](cephfs/mds-cache-objects/SKILL.md) | CInode/CDentry/CDir关系、硬链接、目录分片、子树分区 | 545 |
 | [内核 CephFS 挂载](cephfs/kernel-client-mount/SKILL.md) | 挂载9阶段流程、MON连接、MDS会话建立、选项解析 | 435 |
 
 ## 推荐学习路线
@@ -66,16 +69,18 @@
 进阶 (2-4周)
   │
   ├─ 5. AsyncMessenger         → 理解通信层
-  ├─ 6. Paxos 共识             → 理解 MON 集群共识
-  ├─ 7. PG Peering 状态机       → 理解数据一致性协商
-  └─ 8. BlueStore 引擎          → 理解底层存储
+  ├─ 6. OSD I/O 路径            → 理解 OSD 线程模型和写入链路
+  ├─ 7. Paxos 共识             → 理解 MON 集群共识
+  └─ 8. PG Peering 状态机       → 理解数据一致性协商
        │
        ▼
 深入 (4-6周)
   │
-  ├─ 9. MDS Capability 系统     → 理解分布式缓存一致性
-  ├─ 10. 内核 CephFS 挂载       → 理解内核客户端
-  └─ 11. Scrubbing 机制         → 理解数据完整性保障
+  ├─ 9. BlueStore 引擎          → 理解底层存储
+  ├─ 10. MDS 请求路径           → 理解 MDS 线程模型和异步续跑
+  ├─ 11. MDS Capability 系统     → 理解分布式缓存一致性
+  ├─ 12. MDS 缓存数据结构       → 理解 CInode/CDentry/CDir 关系
+  └─ 13. Scrubbing 机制         → 理解数据完整性保障
 ```
 
 ## 每个 SKILL.md 的结构
@@ -104,13 +109,16 @@
 ceph-skills/
 ├── cephfs/                    # CephFS 文件系统
 │   ├── 00-overview/           # Ceph 整体架构概述
-│   ├── mds-capability/        # MDS Capability 系统
-│   └── kernel-client-mount/   # 内核 CephFS 挂载流程
+│   ├── mds-request-path/      # MDS 请求处理路径
+│   ├── mds-capability/         # MDS Capability 系统
+│   ├── mds-cache-objects/      # MDS 缓存核心数据结构
+│   └── kernel-client-mount/    # 内核 CephFS 挂载流程
 ├── crush/                     # CRUSH 数据分布
 │   └── crush-algorithm/       # CRUSH 算法详解
 ├── mon/                       # Monitor 集群
 │   └── mon-paxos/             # Paxos 共识机制
 ├── osd/                       # OSD 存储
+│   ├── osd-io-path/           # OSD I/O 路径与线程模型
 │   ├── pg-peering/            # PG 状态机与 Peering
 │   ├── bluestore/             # BlueStore 存储引擎
 │   └── scrub/                 # OSD Scrubbing 机制
