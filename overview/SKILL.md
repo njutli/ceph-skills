@@ -263,7 +263,7 @@ MDS 管理文件系统元数据的核心缓存对象：
 | `CDentry` | 目录项：文件名到 inode 的映射，三种链接类型 | `src/mds/CDentry.h` |
 | `CDir` | 目录分片：支持大目录负载均衡和子树分区 | `src/mds/CDir.h` |
 
-详细说明请参考 [MDS 缓存核心数据结构](../mds-cache-objects/SKILL.md)。
+详细说明请参考 [MDS 缓存核心数据结构](../cephfs/mds-cache-objects/SKILL.md)。
 
 ## 10. 10年演进 (2015-2025)
 
