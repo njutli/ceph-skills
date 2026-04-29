@@ -509,3 +509,10 @@ else if (t == "dpdk")
 ### Q3: 为什么使用边沿触发 (EPOLLET) 而不是水平触发？
 
 **A**: 边沿触发只在状态变化时通知一次，避免了水平触发可能的重复通知开销。但要求代码必须读取/写入直到 EAGAIN，AsyncMessenger 通过循环处理确保了这一点。
+
+### 参考文献
+
+1. **消息层开发者文档**: https://docs.ceph.com/en/latest/dev/msg-layer/
+2. **ProtocolV2 规范**: `src/msg/async/ProtocolV2.h`
+3. **源码**: `src/msg/async/AsyncMessenger.cc`, `src/msg/async/AsyncConnection.cc`
+4. **epoll 手册**: `man 7 epoll"

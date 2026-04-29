@@ -16,61 +16,61 @@
 
 | Skill | 内容 | 行数 |
 |-------|------|------|
-| [WSL+QEMU 部署指南](deploy/wsl-qemu/SKILL.md) | 三种部署方案、12天学习路线、数据流验证、故障模拟 | 1394 |
+| [WSL+QEMU 部署指南](deploy/wsl-qemu/SKILL.md) | 三种部署方案、12天学习路线、数据流验证、故障模拟 | 1395 |
 
 ### 📐 核心算法
 
 | Skill | 内容 | 行数 |
 |-------|------|------|
-| [CRUSH 算法](crush/crush-algorithm/SKILL.md) | 数据分布算法、5种bucket类型、Straw2数学原理、规则系统 | 359 |
+| [CRUSH 算法](crush/crush-algorithm/SKILL.md) | 数据分布算法、5种bucket类型、Straw2数学原理、规则系统 | 364 |
 
 ### 🔒 MON 集群
 
 | Skill | 内容 | 行数 |
 |-------|------|------|
-| [Paxos 共识](mon/mon-paxos/SKILL.md) | Paxos状态机、3阶段共识、领导者选举、服务框架、lease机制 | 447 |
+| [Paxos 共识](mon/mon-paxos/SKILL.md) | Paxos状态机、3阶段共识、领导者选举、服务框架、lease机制 | 454 |
 
 ### 💾 OSD 存储
 
 | Skill | 内容 | 行数 |
 |-------|------|------|
-| [OSD I/O 路径](osd/osd-io-path/SKILL.md) | 线程分布、写入请求追踪、ShardedOpWQ调度、BlueStore写入链路 | 395 |
-| [PG Peering 状态机](osd/pg-peering/SKILL.md) | 完整状态机、GetInfo/GetLog/GetMissing、权威OSD选择、恢复流程 | 448 |
-| [BlueStore 引擎](osd/bluestore/SKILL.md) | 磁盘布局、Onode/Blob映射、写入路径、Allocator、压缩 | 445 |
-| [Scrubbing 机制](osd/scrub/SKILL.md) | 浅层/深层Scrub、状态机、副本哈希比较、调度策略 | 329 |
+| [OSD I/O 路径](osd/osd-io-path/SKILL.md) | 线程分布、写入请求追踪、ShardedOpWQ调度、BlueStore写入链路 | 409 |
+| [PG Peering 状态机](osd/pg-peering/SKILL.md) | 完整状态机、GetInfo/GetLog/GetMissing、权威OSD选择、恢复流程 | 460 |
+| [BlueStore 引擎](osd/bluestore/SKILL.md) | 磁盘布局、Onode/Blob映射、写入路径、Allocator、压缩 | 457 |
+| [Scrubbing 机制](osd/scrub/SKILL.md) | 浅层/深层Scrub、状态机、副本哈希比较、调度策略 | 335 |
 
 ### 🌐 通信层
 
 | Skill | 内容 | 行数 |
 |-------|------|------|
-| [AsyncMessenger](messenger/async-messenger/SKILL.md) | 连接状态机、ProtocolV2协议、epoll事件循环、RDMA/DPDK | 511 |
+| [AsyncMessenger](messenger/async-messenger/SKILL.md) | 连接状态机、ProtocolV2协议、epoll事件循环、RDMA/DPDK | 518 |
 
 ### 💻 客户端
 
 | Skill | 内容 | 行数 |
 |-------|------|------|
-| [Objecter](client/objecter/SKILL.md) | 对象→OSD映射、op提交、ObjectCacher写回、Striper条带化 | 527 |
+| [Objecter](client/objecter/SKILL.md) | 对象→OSD映射、op提交、ObjectCacher写回、Striper条带化 | 539 |
 
 ### 📀 RBD 块存储
 
 | Skill | 内容 | 行数 |
 |-------|------|------|
-| [RBD 块存储](rbd/SKILL.md) | ImageCtx、快照/克隆/COW分层、ExclusiveLock排他锁、Journal日志、ObjectMap、迁移 | — |
+| [RBD 块存储](rbd/SKILL.md) | ImageCtx、快照/克隆/COW分层、ExclusiveLock排他锁、Journal日志、ObjectMap、迁移 | 352 |
 
 ### ☁️ RGW 对象存储
 
 | Skill | 内容 | 行数 |
 |-------|------|------|
-| [RGW 对象存储网关](rgw/SKILL.md) | S3/Swift API、SAL抽象层、Bucket Index分片、Multisite多站点、Lifecycle、IAM策略 | — |
+| [RGW 对象存储网关](rgw/SKILL.md) | S3/Swift API、SAL抽象层、Bucket Index分片、Multisite多站点、Lifecycle、IAM策略 | 422 |
 
 ### 📂 CephFS 文件系统
 
 | Skill | 内容 | 行数 |
 |-------|------|------|
-| [MDS 请求路径](cephfs/mds-request-path/SKILL.md) | 线程分布、客户端请求追踪、异步续跑模式、子系统消息路由 | 458 |
-| [MDS Capability 系统](cephfs/mds-capability/SKILL.md) | Cap位定义、授权/撤销/释放、分布式锁、内核cap管理 | 400 |
-| [MDS 缓存核心数据结构](cephfs/mds-cache-objects/SKILL.md) | CInode/CDentry/CDir关系、硬链接、目录分片、子树分区 | 544 |
-| [内核 CephFS 挂载](cephfs/kernel-client-mount/SKILL.md) | 挂载9阶段流程、MON连接、MDS会话建立、选项解析 | 435 |
+| [MDS 请求路径](cephfs/mds-request-path/SKILL.md) | 线程分布、客户端请求追踪、异步续跑模式、子系统消息路由 | 471 |
+| [MDS Capability 系统](cephfs/mds-capability/SKILL.md) | Cap位定义、授权/撤销/释放、分布式锁、内核cap管理 | 412 |
+| [MDS 缓存核心数据结构](cephfs/mds-cache-objects/SKILL.md) | CInode/CDentry/CDir关系、硬链接、目录分片、子树分区 | 552 |
+| [内核 CephFS 挂载](cephfs/kernel-client-mount/SKILL.md) | 挂载9阶段流程、MON连接、MDS会话建立、选项解析 | 442 |
 
 ## 推荐学习路线
 
@@ -120,7 +120,7 @@
 
 本项目的分析基于以下代码库：
 
-- **Ceph**: `https://github.com/ceph/ceph` (主线代码位于 `linux/ceph`)
+- **Ceph**: `https://github.com/ceph/ceph`
 - **Linux Kernel CephFS**: `https://github.com/torvalds/linux` (fs/ceph/, net/ceph/)
 
 ## 项目结构

@@ -488,7 +488,7 @@ pkill -f ceph-osd
 pkill -f ceph-mgr
 ```
 
-### 5.6 CephFS 客户端流程 (方案A)
+### 5.8 CephFS 客户端流程 (方案A)
 
 **为什么需要 MDS？** Ceph 提供三种存储接口，MDS 仅用于 CephFS（文件存储）：
 
@@ -605,12 +605,6 @@ mount -t ceph 127.0.0.1:6789:/ /mnt/cephfs
   6. MDS 将 cap 授予客户端 B
 
   这就像内核里的 inode 锁 + 页缓存回写，但跨网络、跨客户端
-```
-
-**停止集群：**
-
-```bash
-../src/stop.sh
 ```
 
 ---
@@ -1392,3 +1386,10 @@ ceph osd up 2
 - **RBD**: 块设备接口，只有读写操作，直接映射到对象 → 不需要元数据服务
 - **RGW**: 对象存储接口，对象名就是 key，直接计算位置 → 不需要元数据服务
 - **CephFS**: 文件系统接口，有目录树、inode、权限、硬链接等复杂元数据 → 需要 MDS 管理
+
+### 参考文献
+
+1. **Ceph 开发者指南**: https://docs.ceph.com/en/latest/dev/developer_guide/
+2. **vstart.sh 集群**: `src/vstart.sh` — Ceph 源码自带的开发集群脚本
+3. **WSL 文档**: https://learn.microsoft.com/en-us/windows/wsl/
+4. **QEMU 文档**: https://www.qemu.org/docs/master/"

@@ -414,3 +414,9 @@ src/rgw/lua/                         # Lua 脚本集成
 3. **S3 API 兼容性**: https://docs.ceph.com/en/latest/radosgw/s3/
 4. **AWS S3 REST API**: https://docs.aws.amazon.com/AmazonS3/latest/API/Welcome.html
 5. **OpenStack Swift API**: https://docs.openstack.org/api-ref/object-store/
+
+### 相关技能
+
+- [Objecter](../client/objecter/SKILL.md) — RGW 通过 librados/Objecter 读写 RADOS 对象
+- [CRUSH 算法](../crush/crush-algorithm/SKILL.md) — 底层 RADOS 对象到 OSD 的映射依赖 CRUSH
+- [AsyncMessenger](../messenger/async-messenger/SKILL.md) — RGW 使用 Messenger 与 OSD/MON 通信

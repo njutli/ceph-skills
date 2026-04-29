@@ -398,3 +398,15 @@ class MClientCaps : public Message {
 ### Q3: "Loner" 机制是什么？
 
 **A**: 当只有一个客户端活跃访问某个 inode 时，MDS 将其标记为 "loner"，允许它持有 EXCL cap。这避免了每次操作都向 MDS 请求，大幅提升单客户端性能。当其他客户端需要访问时，MDS 撤销 loner 的 EXCL cap，降级为 SYNC 状态。
+
+### 相关技能
+
+- [MDS 缓存核心数据结构](../mds-cache-objects/SKILL.md) — Cap 位的载体是 CInode
+- [MDS 请求路径](../mds-request-path/SKILL.md) — 客户端请求触发 Cap 授权/撤销
+
+### 参考文献
+
+1. **MDS Capability 设计**: `src/mds/Capability.h`
+2. **源码**: `src/mds/Locker.cc` (handle_client_caps, eval_cap_gather), `src/mds/MDCache.cc`
+3. **CephFS 论文**: "Ceph: A Scalable, High-Performance Distributed File System" (OSDI 2006)
+4. **Linux CephFS Cap 文档**: https://docs.ceph.com/en/latest/cephfs/capabilities/"

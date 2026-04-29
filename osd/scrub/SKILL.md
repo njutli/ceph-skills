@@ -327,3 +327,9 @@ struct ScrubJob {
 3. 将正确数据写入损坏的副本
 4. 更新对象的 digest 和元数据
 5. 记录修复操作到 OSD 日志
+
+### 参考文献
+
+1. **Scrubbing 开发者文档**: https://docs.ceph.com/en/latest/dev/osd_internals/scrub/
+2. **源码**: `src/osd/scrub_machine.cc`, `src/osd/PG.cc` (scrub 相关部分)
+3. **Ceph 运维文档 (Scrub)**: https://docs.ceph.com/en/latest/rados/configuration/osd-config-ref/#scrubbing"

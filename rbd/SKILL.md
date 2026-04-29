@@ -345,3 +345,8 @@ src/cls/rbd/                     # RADOS 对象类 (服务端)
 2. **RBD Mirror 设计**: https://docs.ceph.com/en/latest/rbd/rbd-mirroring/
 3. **librbd C API**: https://docs.ceph.com/en/latest/rbd/librbdpy/
 4. **"RBD: RADOS Block Device"** - Ceph 官方架构文档
+
+### 相关技能
+
+- [Objecter](../client/objecter/SKILL.md) — RBD 通过 librados/Objecter 向 OSD 发送 I/O
+- [CRUSH 算法](../crush/crush-algorithm/SKILL.md) — 对象到 OSD 的映射依赖 CRUSH

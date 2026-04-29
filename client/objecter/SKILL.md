@@ -525,3 +525,15 @@ uint64_t extent_off = blockno * su + off_in_block;
 ### Q3: Backoff 机制的作用？
 
 **A**: 当 OSD 过载时，可以发送 `MOSDBackoff` 消息要求客户端暂停发送特定 PG 范围内的 op。Objecter 收到 backoff 后，将匹配的 op 排队而不立即发送，给 OSD 喘息的空间。这是一种细粒度的流控机制。
+
+### 相关技能
+
+- [CRUSH 算法](../crush/crush-algorithm/SKILL.md) — Objecter 使用 CRUSH 计算对象到 OSD 的映射
+- [AsyncMessenger](../messenger/async-messenger/SKILL.md) — op 通过 Messenger 发送到目标 OSD
+
+### 参考文献
+
+1. **Objecter 源码**: `src/osdc/Objecter.cc`, `src/osdc/Objecter.h`
+2. **RADOS API 文档**: https://docs.ceph.com/en/latest/rados/api/librados-intro/
+3. **CRUSH 论文**: https://ceph.com/assets/pdfs/weil-crush-sc06.pdf
+4. **Ceph 整体架构**: https://docs.ceph.com/en/latest/architecture/"

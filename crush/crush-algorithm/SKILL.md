@@ -31,7 +31,7 @@ CRUSH 方案:
   - 无限扩展（计算复杂度 O(log n)）
 ```
 
-CRUSH 全称是 **C**ontrolled **R**eplication **U**nder **S**calable **H**ashing，由 Sage Weil 在 2006 年 OSDI 论文中提出。
+CRUSH 全称是 **C**ontrolled **R**eplication **U**nder **S**calable **H**ashing，由 Sage Weil 在 2006 年 SC（Supercomputing）论文中提出（Ceph 整体设计发表于同年的 OSDI 论文）。
 
 ---
 
@@ -357,3 +357,8 @@ put_workspace()   // 归还工作空间到池
 **A**:
 - **FIRSTN**: 顺序依赖，副本 1 的计算依赖副本 0 的结果。改变副本数量会影响所有后续副本的位置。
 - **INDEP**: 位置独立，每个副本独立计算。改变副本数量不影响已有副本的位置。适用于 EC（纠删码）池。
+
+### 相关技能
+
+- [Objecter](../../client/objecter/SKILL.md) — CRUSH 的主要调用者，客户端在 Objecter 中执行 PG→OSD 映射
+- [Ceph 整体概述](../../overview/SKILL.md) — CRUSH 在 Ceph 架构中的位置

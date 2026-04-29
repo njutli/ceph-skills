@@ -433,3 +433,10 @@ mdsc->delayed_work 定期执行:
 ### Q3: 多个 mount 到同一集群会共享连接吗？
 
 **A**: 是的。`sget_fc()` 会检查是否有兼容的已有 superblock。如果 FSID、options 等匹配，多个 mount 会共享同一个 `ceph_client`（包括 MON 连接和 OSD 连接），但每个 mount 有独立的 `ceph_fs_client` 和 `ceph_mds_client`。
+
+### 参考文献
+
+1. **Linux 内核源码**: `fs/ceph/super.c`, `fs/ceph/mds_client.c`, `net/ceph/ceph_common.c`
+2. **CephFS 挂载文档**: https://docs.ceph.com/en/latest/cephfs/mount-using-kernel-driver/
+3. **Ceph 客户端认证**: https://docs.ceph.com/en/latest/rados/operations/user-management/
+4. **"Understanding the Linux Kernel" Ch.12 (VFS)** — O'Reilly"

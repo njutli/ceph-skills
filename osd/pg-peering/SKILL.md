@@ -446,3 +446,15 @@ Stray → (ActMap 含正确角色) → ReplicaActive/RepNotRecovering
 ### Q3: WaitUpThru 状态的作用？
 
 **A**: 确保 Primary OSD 的 `up_thru` epoch 足够新。这是防止"脑裂"的安全机制——如果 primary 在宕机后恢复，必须等待 MON 确认它确实已经重新上线，才能激活 PG。
+
+### 相关技能
+
+- [OSD I/O 路径](../osd-io-path/SKILL.md) — Peering 后 PG 进入 Active，恢复操作与客户端 I/O 走同一调度器
+- [Scrubbing](../scrub/SKILL.md) — Scrub 使用同一 PG 状态机，与 Peering 共享状态变量
+- [Paxos 共识](../../mon/mon-paxos/SKILL.md) — OSDMap 变更通过 Paxos 推进，触发 Peering
+
+### 参考文献
+
+1. **PG 开发者文档**: https://docs.ceph.com/en/latest/dev/peering/
+2. **源码**: `src/osd/PG.h`, `src/osd/PeeringState.h`, `src/osd/PeeringState.cc`
+3. **Ceph 论文**: "Ceph: A Scalable, High-Performance Distributed File System" (OSDI 2006)"

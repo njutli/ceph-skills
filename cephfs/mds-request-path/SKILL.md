@@ -457,3 +457,15 @@ MDRequestImpl (MDCache.h:76 定义)
 ### Q5: 为什么 MDS 不使用 Ceph 的 WorkQueue/ThreadPool？
 
 **A**: MDS 元数据操作需要访问共享的 MDCache 状态（CInode/CDentry/CDir），这些状态之间有复杂的依赖关系（路径遍历、锁依赖、缓存一致性）。使用 WorkQueue 会在多个线程间产生大量锁争用，反而降低性能。全局 `mds_lock` + 异步续跑是更简单、更可预测的模型。
+
+### 相关技能
+
+- [MDS 缓存核心数据结构](../mds-cache-objects/SKILL.md) — 请求处理过程中操纵的核心对象
+- [MDS Capability 系统](../mds-capability/SKILL.md) — 请求处理触发 Cap 授权与撤销
+
+### 参考文献
+
+1. **MDS 开发者文档**: https://docs.ceph.com/en/latest/dev/mds_internals/
+2. **源码**: `src/mds/MDSRank.cc`, `src/mds/Server.cc`, `src/mds/MDCache.cc`
+3. **CephFS 论文原理**: "Ceph: A Scalable, High-Performance Distributed File System" (OSDI 2006)
+4. **Locker 设计**: `src/mds/Locker.cc`, `src/mds/locks.c"

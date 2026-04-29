@@ -394,3 +394,16 @@ BlueStore::Blob (BlueStore.h:650)
 ### Q5: Recovery 操作如何与客户端 I/O 竞争调度？
 
 **A**: `PGRecovery` 的调度类由优先级决定：高优先级恢复（如 `must_repair`）比客户端 I/O 优先级更高，低优先级恢复（如 `periodic_regular`）使用 `background_best_effort` 类。mClock 调度器通过预留带宽和权重配置确保恢复不会完全饿死客户端 I/O，同时客户端 I/O 也不会完全阻塞恢复。
+
+### 相关技能
+
+- [BlueStore 引擎](../bluestore/SKILL.md) — I/O 路径最终写入 BlueStore
+- [Objecter](../../client/objecter/SKILL.md) — 客户端发起的 op 通过 Objecter 到达 OSD
+- [PG Peering](../pg-peering/SKILL.md) — Peering 恢复流程与 I/O 路径的并发调度
+
+### 参考文献
+
+1. **OSD 开发者文档**: https://docs.ceph.com/en/latest/dev/osd_overview/
+2. **mClock 调度器论文**: "mClock: Handling Throughput Variability for Hypervisor IO Scheduling" (OSDI 2010)
+3. **dmClock 实现**: https://github.com/ceph/dmclock
+4. **源码**: `src/osd/OSD.cc`, `src/osd/PG.cc`, `src/osd/OpScheduler.cc"

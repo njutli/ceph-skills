@@ -443,3 +443,15 @@ struct bluestore_compression_header_t {
 ### Q3: ExtentMap 分片的意义？
 
 **A**: 对于大对象 (如 RBD 镜像)，ExtentMap 可能非常大。分片将范围映射拆分为多个 RocksDB 键，允许按需加载相关部分，而不是每次 I/O 都加载整个映射。分片边界由 `extent_map_shards` 向量定义。
+
+### 相关技能
+
+- [OSD I/O 路径](../osd-io-path/SKILL.md) — 从 ShardedOpWQ 到 BlueStore 写入链路的完整路径
+- [Objecter](../../client/objecter/SKILL.md) — 客户端 I/O 请求的发起端
+
+### 参考文献
+
+1. **BlueStore 架构文档**: https://docs.ceph.com/en/latest/dev/bluestore/
+2. **BlueStore 配置指南**: https://docs.ceph.com/en/latest/rados/configuration/bluestore-config-ref/
+3. **源码**: `src/os/bluestore/BlueStore.cc`, `src/os/bluestore/BlueStore.h`
+4. **RocksDB 文档**: https://github.com/facebook/rocksdb"

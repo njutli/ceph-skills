@@ -238,7 +238,7 @@ src/
 ├── osdc/             # OSD 客户端
 │   ├── Objecter.cc   # OSD 操作发送
 │   ├── ObjectCacher.cc # 对象缓存
-│   └── Stiper.cc     # 条带化
+│   └── Striper.cc    # 条带化
 │
 ├── librados/         # RADOS API
 │   └── RadosClient.cc
@@ -322,7 +322,7 @@ CephFS 子系统关系：
             └── 调用 MDCache 方法操作缓存对象
 ```
 
-## 11. 参考文献与资源
+## 12. 参考文献与资源
 
 ### 官方文档
 1. **Ceph 架构文档**: https://docs.ceph.com/en/latest/architecture/
