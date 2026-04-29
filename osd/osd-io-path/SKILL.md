@@ -300,7 +300,7 @@ OSD (src/osd/OSD.h)
               │     └── RepGather *repop  (复制收集器)
               └── ObjectContext (src/osd/ObjectContext.h)
                     ├── object_rwlock    (读写锁)
-                    └── erosion_manifest (EC 清单)
+                    └── erasure_manifest (EC 清单)
 ```
 
 ### 3.2 BlueStore 写入事务对象关系

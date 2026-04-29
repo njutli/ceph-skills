@@ -343,7 +343,7 @@ src/cls/rbd/                     # RADOS 对象类 (服务端)
 
 1. **RBD 官方文档**: https://docs.ceph.com/en/latest/rbd/
 2. **RBD Mirror 设计**: https://docs.ceph.com/en/latest/rbd/rbd-mirroring/
-3. **librbd C API**: https://docs.ceph.com/en/latest/rbd/librbdpy/
+3. **librbd C API**: https://docs.ceph.com/en/latest/api/librbd/
 4. **"RBD: RADOS Block Device"** - Ceph 官方架构文档
 
 ### 相关技能

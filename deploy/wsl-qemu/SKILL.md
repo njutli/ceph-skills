@@ -1392,4 +1392,4 @@ ceph osd up 2
 1. **Ceph 开发者指南**: https://docs.ceph.com/en/latest/dev/developer_guide/
 2. **vstart.sh 集群**: `src/vstart.sh` — Ceph 源码自带的开发集群脚本
 3. **WSL 文档**: https://learn.microsoft.com/en-us/windows/wsl/
-4. **QEMU 文档**: https://www.qemu.org/docs/master/"
+4. **QEMU 文档**: https://www.qemu.org/docs/master/
