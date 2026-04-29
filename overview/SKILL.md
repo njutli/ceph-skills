@@ -104,35 +104,192 @@ Ceph 的设计哲学是**去中心化 + 智能客户端**：
 - REST API 接口
 - 代码位置：`src/rgw/`
 
-## 5. 数据流（写入路径）
+## 5. 核心概念：PG 与 Pool
+
+在 Ceph 庞大的集群中，数据并不是直接散落在 OSD 上的。**PG (Placement Group)** 和 **Pool** 是连接“逻辑数据视图”与“物理存储设备”的中间层。
+
+### 5.1 什么是 PG？
+**PG (Placement Group，归置组)** 是 Ceph 数据分布和管理的核心逻辑单元。
+
+在物理上，**PG 并不对应任何实际的目录或文件**，它纯粹是一个通过 Hash 计算得出的**虚拟 ID**（如 `1.5a3`）。Ceph 的数据流向并不是“对象 → OSD"，而是：
+**对象 (Object) → 归置组 (PG) → OSD 组**
+
+你可以把 **PG** 想象成一个**“逻辑集装箱”**：
+*   **对数据而言**：PG 是一组对象的集合。成千上万个对象被哈希到同一个 PG ID 中。
+*   **对集群而言**：PG 是管理粒度的基本单位。Ceph 的所有核心运维动作（副本复制、故障恢复、数据校验 Scrub、状态协商 Peering）都是**以 PG 为单位**进行的，而不是以单个文件/对象为单位。
+
+### 5.2 为什么需要引入 PG？（解决元数据爆炸）
+如果没有 PG，Ceph 需要维护 `10 亿个对象 ↔ OSD` 的精确映射：
+*   **灾难场景**：100 个 OSD 的集群，每个 OSD 可能要记录上千万个对象的位置和健康状态。扩容或单盘故障时，集群需要重新计算每个对象的去向，元数据同步和状态交换会让整个集群陷入瘫痪。
+
+引入 PG 后，逻辑分层解耦：
+*   **元数据骤降**：假设集群规划 1024 个 PG，平均每个 OSD 负责约 10 个 PG。OSD 只需维护十几个 PG 的状态，而不是上千万个对象的状态。
+*   **极速恢复**：OSD 故障时，只需要对比少量 PG 的版本号（`pg_log`）就能完成数据重建，效率提升几个数量级。
+
+### 5.3 PG 与 Pool 的关系
+**Pool (存储池)** 是 PG 的**逻辑容器与规则制定者**。
+
+*   **包含关系**：一个 Pool 由一组连续的 PG 组成。例如 Pool `data` 配置 `pg_num=1024`，它就拥有编号为 `0~1023` 的所有 PG（对应 PG ID 为 `1.0` 到 `1.3ff` 等）。
+*   **规则继承**：Pool 定义了其下属所有 PG 的物理行为策略：
+    *   `size`: 存几份副本。
+    *   `crush_rule`: 数据往哪里落。
+    *   `pg_num`: 这个 Pool 切分成多少个逻辑块。
+*   **隔离性**：不同 Pool 的 PG 互不干扰，可以实现“数据隔离”或“性能隔离”。
+
+
+
+### 5.4 核心映射路径总结
+```
+客户端写入 object "photo.jpg"
+   │
+   ▼
+1. 映射到 Pool:     pool_id = 1 (data)
+   │
+   ▼
+2. 映射到 PG:       pg_id = hash(object_name) % pg_num = 352
+   │                (得到 PG ID: 1.160 (即 Pool1 的第 352 号 PG))
+   │
+   ▼
+3. 映射到 OSD:      CRUSH(pg_id=352, osdmap) → [osd.1(主), osd.3(备), osd.5(备)]
+   │
+   ▼
+最终落盘:           数据被发送到 osd.1，并由 osd.1 负责分发给 osd.3 和 osd.5
+```
+
+## 6. 三大接口写入数据流
+
+由于 Ceph 的三种接口（块/对象/文件）客户端实现不同，写入路径也有区别。
+下文中 `【客户端】` 表示运行在用户空间（或内核空间）的组件，`【服务端】` 表示运行在存储服务器上的 Ceph 守护进程。
+
+### 6.1 块存储 (RBD)
+
+Ceph 提供两种块设备访问方式：**内核模块** (生成 `/dev/rbdX`) 和 **用户态库** (常用于 QEMU)。
+
+**(1) 内核态路径 (/dev/rbdX)**
+内核模块 `rbd.ko` 直接实现协议栈，不使用 `librbd`。
 
 ```
-用户写入 "hello" 到 CephFS 文件
+【客户端】(运行在 Linux 内核中)
+  │
+  ├─ 用户应用 (对 /dev/rbdX 执行 I/O)
   │
   ▼
-客户端计算文件对应的 RADOS 对象名
+  ├─ VFS → Generic Block Layer (提交 bio)
   │
   ▼
-Objecter 使用 CRUSH 算法计算对象应存储在哪些 OSD
-  │ (输入: object_id + pool_id + OSDMap)
-  │ (输出: [osd.0 (primary), osd.1, osd.2])
-  ▼
-客户端发送写请求到 primary OSD (osd.0)
+  ├─ RBD Driver (drivers/block/rbd.c)
+  │    ├─ rbd_queue_workfn: 接收 block I/O
+  │    └─ 将 bio 转换为 ceph osd_request
   │
   ▼
-Primary OSD 复制数据到 replica OSDs
-  │ (osd.0 → osd.1, osd.2)
-  ▼
-所有 replica 确认写入完成
-  │
-  ▼
-Primary OSD 回复客户端
-  │
-  ▼
-写入完成
+  └─ OSD Client (net/ceph/osd_client.c) ← 内核版 Objecter/CRUSH
+       │
+       ▼
+──────────────────────────────────────────────────────────────
+【服务端】
+     OSD.X (Primary OSD)
+       └─ BlueStore (src/os/bluestore/BlueStore.cc)
 ```
 
-## 6. 关键数据结构
+**(2) 用户态路径 (librbd, 常用于 QEMU/KVM)**
+此路径不生成块设备文件，而是由 QEMU 进程直接读写镜像。
+
+```
+【客户端】(运行在 QEMU 进程中)
+  │
+  ├─ Guest VM (访问虚拟磁盘 vda)
+  │
+  ▼
+  ├─ QEMU Block Driver (drive=rbd:id=myimage...)
+  │    (构造 librados rbd image name)
+  │
+  ▼
+  ├─ librbd (src/librbd/ImageCtx)
+  │
+  ▼
+  └─ librados / Objecter (src/osdc/Objecter.cc)
+       │
+       ▼
+──────────────────────────────────────────────────────────────
+【服务端】
+     OSD.X (Primary OSD)
+       └─ BlueStore
+```
+
+### 6.2 对象存储 (RGW)
+
+```
+【客户端】(运行在外部 HTTP 客户端)
+  │
+  ├─ S3/Swift Client (curl / boto / aws-cli)
+  │    (发送 HTTP PUT request)
+  │
+  │  网络发送
+  ▼
+──────────────────────────────────────────────────────────────
+【服务端】(RGW 网关进程 + OSD 集群)
+  │
+  ▼
+  ├─ RGW Gateway (src/rgw)
+  │    (解析 HTTP 请求，鉴权，将 Bucket+Key 映射为 RADOS 对象名)
+  │
+  ▼
+  └─ librados (集成在 radosgw 进程内部)
+       (作为客户端代理组件，计算 CRUSH，联系 OSD)
+       │
+       │  网络发送 (内部集群通信)
+       ▼
+     OSD.X (Primary OSD)
+       (src/osd/OSD.cc)
+       │
+       ▼
+     BlueStore
+       └─ 数据写入磁盘后回复 RGW
+```
+
+### 6.3 文件存储 (CephFS - 内核态)
+
+**注意**：内核态 CephFS (`mount -t ceph`) **不经过用户态 librados**，因此不调用 `Objecter`。它使用内核内置的等效组件。
+
+```
+【客户端】(Linux 内核空间 + 用户空间)
+  │
+  ├─ 用户应用 (write syscall)
+  │
+  ▼
+  ├─ VFS 层 (fs/ceph/file.c)
+  │
+  ├─ 元数据操作 (lookup, getattr 等)
+  │    └─ MDS Client (fs/ceph/mds_client.c)
+  │       (发送请求给 MDS 守护进程)
+  │
+  ▼
+  └─ 数据读写操作 (read/write file data)
+       └─ OSD Client (net/ceph/osd_client.c)  ← 内核版的 Objecter
+          │
+          ├─ 内核 CRUSH (net/ceph/crush.c): 计算对象所在的 OSD
+          │
+          │  网络发送
+          ▼
+──────────────────────────────────────────────────────────────
+【服务端】(运行在存储集群节点上)
+       │
+       ▼
+     OSD.0 (Primary OSD)
+       (src/osd/OSD.cc)
+       │
+       ▼
+     BlueStore
+       └─ 写入磁盘，分发到副本，回复内核客户端
+```
+
+### 关键总结
+
+1. **RBD 和 RGW 都在用户态**：经过 `librados` → `Objecter` → `AsyncMessenger` → OSD。
+2. **内核 CephFS 走内核态**：不经过 `librados`，而是直接调用内核的 `ceph_osd_client` → `ceph_msgr` → OSD。
+3. **无论哪条路径，数据最终都通过相同的机制落盘到 BlueStore。**
+
+## 7. 关键数据结构
 
 ### OSDMap 核心字段
 
@@ -175,7 +332,7 @@ rule replicated_rule {
 }
 ```
 
-## 7. 协议版本
+## 8. 协议版本
 
 | 协议 | 版本 | 用途 |
 |------|------|------|
@@ -186,7 +343,7 @@ rule replicated_rule {
 | CEPH_OSD_PROTOCOL | 10 | OSD 集群内部 |
 | CEPH_MDS_PROTOCOL | 37 | MDS 集群内部 |
 
-## 8. 关键代码位置
+## 9. 关键代码位置
 
 ```
 src/
@@ -252,7 +409,7 @@ src/
     └── Finisher.cc   # 异步回调
 ```
 
-## 9. MDS 核心数据结构
+## 10. MDS 核心数据结构
 
 MDS 管理文件系统元数据的核心缓存对象：
 
@@ -265,7 +422,7 @@ MDS 管理文件系统元数据的核心缓存对象：
 
 详细说明请参考 [MDS 缓存核心数据结构](../cephfs/mds-cache-objects/SKILL.md)。
 
-## 10. 10年演进 (2015-2025)
+## 11. 10年演进 (2015-2025)
 
 | 年份 | 版本 | 特性 | 解决的问题 |
 |------|------|------|-----------|
@@ -281,7 +438,7 @@ MDS 管理文件系统元数据的核心缓存对象：
 | 2024 | Squid | 内核 CephFS idmapped mounts | 容器化支持 |
 | 2025 | TBD | Crimson OSD 成熟 | Seastar 高性能 OSD |
 
-## 11. 与其他特性的关系
+## 12. 与其他特性的关系
 
 ```
 RADOS (底层对象存储)
@@ -322,7 +479,7 @@ CephFS 子系统关系：
             └── 调用 MDCache 方法操作缓存对象
 ```
 
-## 12. 参考文献与资源
+## 13. 参考文献与资源
 
 ### 官方文档
 1. **Ceph 架构文档**: https://docs.ceph.com/en/latest/architecture/
