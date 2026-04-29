@@ -508,6 +508,12 @@ Chapter 1
 
 # 1.1 straw及straw2算法简介
 
+> [💡 **阅读笔记：Straw 算法核心疑问解答**](./notes/straw_algorithm_qa.md)  
+> 疑问：e1/e2 是指代磁盘吗？签长最大者即被选中？
+
+> [💡 **阅读笔记：映射过程与数据拷贝的关系**](./notes/straw_mapping_vs_copy_qa.md)  
+> 疑问：数据映射是算出来的还是考贝出来的？
+
 Ceph 在设计之初被定位于管理大型分级存储网络，网络中的不同层级具有不同程度的灾难容忍程度，因此也称为容灾域（或者安全域）。图 1-1 是一个典型 Ceph 集群的层级结构：
 
 ![image](./images/img_0003_212a96ad8139.jpg)
@@ -661,6 +667,9 @@ emit 输出最终选择结果给上级调用者并返回。
 
 可见，一条placement rule中真正起决定性作用的是select操作。
 
+> [💡 **阅读笔记：Select 参数解读与最终 OSD 定位机制**](./notes/select_params_and_recursive_descent_qa.md)  
+> 疑问：Select 的 replicas 是什么意思？如果 Type 是 Rack 而非 OSD，数据如何存储？
+
 为了简化 placement rule 配置，select 操作也支持容灾域模式。以 firstn 为例，如果为容灾域模式，那么 firstn 将返回指定数量的叶子设备，并保证这些叶子设备位于不同的、指定类型的容灾域之下。因此，在容灾域模式下，一条最简单的 placement rule 可以只包含如下 3 个操作：
 
 ```txt
@@ -715,6 +724,9 @@ emit(void)
 冲突指选中的条目已经存在于输出条目列表之中。
 
 # (3) OSD 过载 (或失效)
+
+> [💡 **阅读笔记：CRUSH reweight 过载测试机制**](./notes/crush_reweight_mechanism_qa.md)  
+> 疑问：reweight 是自动调整的还是手动设置？它和 weight 的区别？
 
 虽然哈希以及由哈希派生出来的CRUSH算法从理论上能够保证数据在所有磁盘之间均匀分布，但是实际上：
 
