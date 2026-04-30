@@ -767,6 +767,9 @@ ceph osd crush tunables {profile}
 
 <table><tr><td>模板名称</td><td>说明</td></tr><tr><td>argonaut</td><td>最初的CRUSH版本，支持后备选择算法（通过设置choose_local_tries和choose_local_fallback_tries启用），该功能已被废弃。此外这个模板中choose_total_tries值为19，已经被证明在大部分用于生产环境的集群中都无法正常工作（无法选出足够的副本数）</td></tr><tr><td>bobtail</td><td>将choose_total_tries设置为经过大量生产环境验证、更合理的50；引入chooseleaf descend_once，对容灾域模式下的重试次数进行控制</td></tr><tr><td>firefly</td><td>引入chooseleafvary_r，对容灾域模式下，产生递归调用时作为下一级输入的随机因子r进行调整，降低冲突（失败）概率</td></tr><tr><td>hammer</td><td>增加straw2算法支持</td></tr><tr><td>jewel</td><td>引入chooseleaf_stable，减少不相关数据迁移</td></tr><tr><td>legacy</td><td>同argonaut</td></tr><tr><td>optimal</td><td>同jewel</td></tr><tr><td>default</td><td>同firefly，这也是一个新集群创建时默认所启用的CRUSH可调参数</td></tr></table>
 
+> [💡 **阅读笔记：CRUSH 参数模板 Profile 内容与源码实现**](./notes/crush_profiles_and_implementation_qa.md)  
+> 疑问：Profile 具体改了哪些参数？是纯概念还是代码实现？
+
 当然，在一些特定的场景（例如集群比较大同时主机中的磁盘数量比较少）可能使用上述模板仍然无法使得CRUSH正常工作，那么此时需要手动进行参数调整。
 
 # 1.3.1 编辑CRUSHMap
@@ -794,6 +797,9 @@ crushtool -o {compiled-crushmap-filename} --build --num_osds Nlayer1 ...
 ```batch
 crushtool -o mycrushmap --build --num_osds 27 host straw2 3 rack straw2 3\ root uniform 0 
 ```
+
+> [💡 **阅读笔记：crushtool 中 root 层 size=0 的含义与源码**](./notes/crushtool_build_root_size_zero_qa.md)  
+> 疑问：为何 root 的 size 是 0？这不是代表空 Bucket 吗？
 
 需要注意的是，上述两种方式输出的CRUSH map都是经过编译的，需要经过反编译之后才能被正常编辑。
 
@@ -857,6 +863,9 @@ crushtool -c {decompiled-crush-map-filename} -o {compiled-crush-map-filename}
 ```
 
 # （5）模拟测试
+
+> [💡 **阅读笔记：crushtool 模拟测试参数与结果解析**](./notes/crushtool_test_simulation_qa.md)  
+> 疑问：两个测试例子中的输入参数和输出结果各是什么意思？为什么要模拟 100000 个对象？
 
 在新的CRUSH map 生效之前，可以先进行模拟测试，以验证对应的修改是否符合预期，例如可以使用如下命令打印输入范围为[0,9]、副本数为3、采用编号为0的ruleset的映射结果：
 
@@ -1013,6 +1022,9 @@ CRUSH rule 0 x 9 [9]
 # 1.3.3 数据重平衡
 
 在1.2节，我们曾经提及如果集群数据分布不均衡，那么通过手动调整每个OSD的reweight可以触发PG在OSD之间进行迁移，以恢复数据平衡。上述数据重平衡操作可以逐个OSD或者批量进行。
+
+> [💡 **阅读笔记：Reweight 触发数据迁移的原理与源码**](./notes/crush_reweight_migration_mechanism_qa.md)  
+> 疑问：数据迁移是纯逻辑映射还是实际数据拷贝？触发机制和触发点是什么？代码在哪？
 
 首先查看整个集群的空间利用率统计：
 
