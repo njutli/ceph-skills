@@ -1116,6 +1116,8 @@ ceph osd reweight-by-utilization 105 .2 4 --no-increasing
 
 # 新型对象存储引擎BlueStore
 
+https://cloud-atlas.readthedocs.io/zh-cn/latest/ceph/arch/bluestore.html
+
 BlueStore 最早在 Jewel 版本中引入，用于取代传统的 FileStore，作为新一代高性能对象存储后端。BlueStore 在设计中充分考虑了对下一代全 SSD 以及全 NVMe SSD 闪存阵列的适配，例如将一直沿用至今、用于高效索引元数据的 DB 引擎由 LevelDB 替换为 RocksDB (RocksDB 基于 LevelDB 发展而来，并针对直接使用 SSD 作为后端存储介质的场景做了大量优化)。FileStore 因为仍然需要通过操作系统自带的本地文件系统间接管理磁盘，所以所有针对 RADOS 层的对象操作，都需要预先转换为能够被本地文件系统识别、符合 POSIX 语义的文件操作，这个转换的过程极其繁琐，效率低下。
 
 针对FileStore的上述缺陷，BlueStore选择绕过本地文件系统，由自身接管裸设备（例如磁盘），直接进行对象操作，不再进行对象和文件之间的转换，从而使得整个对象存储的I/O路径大大缩短，这是BlueStore能够提升性能的根本原因。除此之外，考虑到元数据的索引效率对于性能有着致命影响，BlueStore在设计中将元数据和用户数据严格分离，因此BlueStore中的元数据可以单独采用高速固态存储设备，例如使用NVMe SSD进行存储，能够起到性能加速的作用。最后，与传统机械磁盘相比，SSD普遍采用4K或者更大的块大小，因此SSD采用位图进行空间管理可以取得比较高的空间收益（机械磁盘块大小为扇区，SSD块大小为4K，假定磁盘容量均为1TB，如果使用位图管理磁盘
