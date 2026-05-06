@@ -1664,7 +1664,7 @@ BitmapFreelistManager 定义的公共接口如表 2-20 所示。
 
 <table><tr><td>接口名称</td><td>含义</td></tr><tr><td>create()</td><td>通过BlueStore的mkfs()接口创建一个BitmapFreelistManager。因为BitmapFreelistManager中的一些关键参数例如块大小、每个段包含的块数目等等可配置，所以需要通过create()固化到kvDB中。后续重新上电时，这些参数将直接从kvDB读取，防止因为配置变化而导致BitmapFreelistManager无法正常工作</td></tr><tr><td>init()</td><td>初始化BitmapFreelistManager。上电时调用，用于从kvDB中加载块大小、每个段包含的块数目等可配置参数</td></tr><tr><td>allocate()</td><td>从BitmapFreelistManager中分配指定范围（[offset, offset + length]）空间</td></tr><tr><td>release()</td><td>从BitmapFreelistManager中释放指定范围（[offset, offset + length]）空间</td></tr><tr><td>initialize_reset()</td><td rowspan="2">上电时，BlueStore通过这两个接口遍历BitmapFreelistManager中所有空闲段，并将其从Allocator中同步移除，从而还原得到上一次下电时Allocator对应的内存结构</td></tr><tr><td>initialize_next()</td></tr></table>
 
-# 2.4.3 BitmapAllocator
+# 2.4.3 BitmapAllocator [📝 BitmapAllocator 位图与树状结构解析](./notes/2.4.3_BitmapAllocator位图与树状结构解析.md)
 
 BitmapAllocator 实现了一个块粒度的内存版本磁盘空间分配器。和 BitmapFreelist-Manager 不同，因为 BitmapAllocator 中的所有段信息不需要使用 kvDB 存盘，所以可以采用非扁平方式进行组织，以提升索引效率。实现上，BitmapAllocator 中的块是以树状形式组织的，如图 2-7 所示。
 
