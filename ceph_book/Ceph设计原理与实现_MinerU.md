@@ -1844,6 +1844,8 @@ mkfs 主要固化一些用户指定的配置项到磁盘，这样后续 BlueStor
 
 <table><tr><td>元数据类型</td><td>作用</td></tr><tr><td>os_type</td><td>ObjectStore 类型,目前有 FileStore 和 BlueStore 两种,这两种 OS 对于磁盘数据的管理形式完全不同</td></tr><tr><td>fsid</td><td>唯一标识一个 BlueStore 实例</td></tr><tr><td>freelist_type</td><td>标识 FreelistManager 的类型。如前所述,因为 BlueStore 固化所有空闲空间列表至 kvDB,所以 FreelistManager 不能动态变化,否则上电时无法正常从 kvDB 读取所有空闲空间信息。基于 freelist_type 可以创建相应类型的 FreelistManager,然后由 FreelistManager 从 kvDB 读取所有空闲空间信息,进而在内存中重建得到完整的空闲空间列表。基于 FreelistManager 的空闲空间信息总是可以得到 Allocator,这意味着 Allocator 的具体类型在上电时是可以动态改变的</td></tr><tr><td>kv backbone</td><td>使用何种类型的 kvDB,目前有 LevelDB 和 RocksDB 可选</td></tr><tr><td>bluefs</td><td>如果使用 RocksDB 作为默认的 kv backbone,是否使用 BlueFS 替换 RocksDB 默认的本地文件系统接口</td></tr></table>
 
+[📝 2.6 BlueStore 与 BlueFS 生命周期及 IO 调用机制解析](./notes/2.6_BlueStore与BlueFS生命周期及IO调用机制解析.md)
+
 # 2.6.2 mount
 
 OSD 进程上电时，BlueStore 通过 mount 操作完成正常上电前的检查和准备工作，其处理逻辑如图 2-10 所示。
