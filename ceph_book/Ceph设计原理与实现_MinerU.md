@@ -3253,6 +3253,8 @@ find_object_context 最终可能产生 0, -ENOENT 和 -EAGAIN 三种结果。如
 
 # 4.2.4 executectx
 
+[深度解析：SnapContext更新与COW触发机制](notes/35_SnapContext更新与COW触发机制.md)
+
 至此，我们已经完成了操作对象前的全部准备工作，接下来可以通过executeCtx正式执行op，执行过程如图4-5所示。
 
 executeCtx 首先基于当前快照模式，更新 OpContext 中的快照上下文（SnapContext）——如果是自定义快照模式，直接基于 op 携带的快照信息更新；否则基于 PGPool 更新。为了保证数据一致性，所有包含修改操作的 op 会预先由 Primary 通过 prepare_transaction 封装成一个 PG 事务，然后由不同类型的 PGBackend 负责转化为 OS 能够识别的本地事务，最后在副本之间进行分发和同步。需要注意的是，如果 op 包含读操作，那么在 prepare_transaction 中会同步去磁盘读取相应的内容（指多副本，纠删码备份方式下将执行异步读），因此需要在执行 prepare_transaction 之前预先获取对象上下文中的 ondisk_
