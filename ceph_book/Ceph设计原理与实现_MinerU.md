@@ -3218,6 +3218,8 @@ osd_backfill_full_ratio 配置项存在的意义在于有些数据迁移是集�
 
 # 2. 关于对象上下文
 
+[深度解析：PG Missing 列表与 pmissing 指针机制](notes/34_PGMissing列表与pmissing指针解析.md)
+
 对象上下文主要保存了对象的 OI 和 SS 属性，同时表明对应的对象是否仍然存在，因此查找对象上下文是 op 真正开始执行之前的必经之路。查找 head 对象上下文相对简单，如果没有在缓存中命中（每个 PG 包含单独的对象上下文缓存，其大小受 osd_pg_object_context_cache_count 控制），直接从磁盘中读取即可；然而如果 op 直接操作快照对象或者克隆对象，这个过程将变得十分复杂，具体如图 4-3 所示。
 
 ![image](./images/img_0037_201f011f2170.jpg)
