@@ -46,7 +46,86 @@ Ceph 采用了一种基于 Epoch 的**视图一致性（View Consistency）**模
    * OSD 请求 OSDMonitor 同步到 `v100`。
    * 同步完成后，OSD 重新评估：如果依据 `v100` 它依然是 Primary，则放行 Op 至 `op_shardedwq`；否则通知客户端出错。
 
-### 3. 总结：队列的本质
+### 3. Op 调度核心：为什么 op_shardedwq 需要分片？
+
+在 Ceph 的源码架构中，`op_shardedwq` 的设计是为了在**高并发性能**与**操作保序性**之间找到完美的平衡点。
+
+### 3.1. 是“一个”队列还是“多个”队列？
+
+*   **对外宏观表现（一个接口）**：对于上层调用者（如网络线程或 Dispatcher 模块），`op_shardedwq` 看起来只是一个单一的对象。调用者只需调用类似 `enqueue_op()` 的方法，不需要关心底层细节。
+*   **内部微观实现（多个分片队列）**：在其内部，维护了一个数组（Vector），包含 `num_shards`（通常由配置 `osd_op_num_shards` 控制，如 16 或 32）个独立的物理子队列（Shard List）。
+
+### 3.2. 为什么要采用分片设计？
+
+这主要为了解决分布式存储中典型的“并发 vs 一致性”矛盾：
+*   **如果只有单队列**：为保证同一个 PG 的 Op 不乱序，全局必须共用一个队列。但这会导致数十个核心同时抢夺同一把锁，严重由于**锁竞争**降低吞吐量。
+*   **如果每个 PG 一个队列**：Ceph 集群通常有成千上万个 PG（Placement Groups）。维护数万个队列及对应的线程资源调度开销巨大，难以管理。
+*   **折中方案（Sharded）**：将几千个 PG 映射到几十个队列中。每个子队列拥有独立的锁，不同的 CPU 线程（Worker）可以并行拉取不同队列中的 Op 进行处理，大幅提升了 OSD 的整体并发性能。
+
+### 3.3. Op 如何决定进入哪个子队列？
+
+Op 的入队逻辑是基于 **PG ID** 的确定性路由（Deterministic Routing），这确保了**同一个 PG 的所有 Op 永远进入同一个子队列**。
+
+*   **分配逻辑**：通过获取 PG ID 的哈希值并对分片数量取模。
+    `shard_id = hash(pg_id) % num_shards;`
+*   **保序效果**：无论客户端如何并发发送请求，只要属于 `PG 1.2` 的 Op，计算出的 `shard_id` 永远固定。该 Op 在子队列中严格遵循 **FIFO（先进先出）** 原则执行，从根本上防止了同一个对象被并发修改导致的乱序和数据不一致。
+
+## 4. op_shardedwq 的内部三级队列结构
+
+在确定了 Op 归属的 PG 分片队列（Shard List）后，`op_shardedwq` 内部还采用了**多级分层架构**。这种设计的目的是在保证**单个客户端操作严格顺序**（保序）的同时，兼顾**不同客户端及不同任务的并发执行效率**。
+
+### 4.1. 层级拆解
+从宏观到微观，Op 在 Shard 内部经历的队列过滤层级如下：
+
+1.  **第 1 级：PG 分片队列 (Shard Queue)**
+    *   **分流依据**：PG ID 的 Hash 值（如前所述）。
+    *   **作用**：**大粒度分流**。解决全局锁竞争问题。同一个 PG 的所有 Op 必定落入同一个 Shard。
+
+2.  **第 2 级：优先级队列 (Priority Queue)**
+    *   **分流依据**：Op 的任务优先级（如：Recovery、Scrub、Client IO）。
+    *   **作用**：**QoS 保障**。确保 Peering 等系统关键路径操作（Recovery IO）不会被普通的客户端数据读写阻塞。
+
+3.  **第 3 级：会话子队列 (Session Sub-queue)**
+    *   **分流依据**：客户端地址/身份（Client ID / Entity Name）。
+    *   **作用**：**隔离与保序**。这是保证保序性的核心——同一个客户端发送到同一个 PG 的 Op，永远在一个 FIFO 队列里排队，绝不会发生“后来的 Op 先执行”导致的逻辑覆盖。
+
+### 4.2. 结构示意图
+```text
+[OSD op_shardedwq]
+   │
+   └── [Shard N] (对应某个 PG Hash 分片)
+        │
+        └── (内部按优先级分层)
+             ├── [Priority: High/Recovery]  (高优先级区)
+             │    ├── [Session: Client A] -> Op1 -> Op2 
+             │    └── [Session: Client B] -> Op4
+             │
+             └── [Priority: Low/Standard]   (普通优先级区)
+                  ├── [Session: Client A] -> Op3
+                  └── [Session: Client C] -> Op5
+```
+
+### 4.3. 综合场景举例
+**前提**：客户端 **Client A** 和 **Client B** 同时对 **PG 1.2** 进行操作。
+*   **Client A** 发送：`写 Op1`（高优先级/Recovery）、`写 Op2`（普通优先级）和 `写 Op3`（普通优先级）。
+*   **Client B** 发送：`读 Op4`（高优先级）。
+
+**流转过程**：
+1.  **Level 1 (Shard)**：所有 Op 均进入处理 PG 1.2 的那个 Shard。
+2.  **Level 2 (Priority)**：
+    *   `Op1` 和 `Op4` 被分流至 **High Priority** 区。
+    *   `Op2` 和 `Op3` 被分流至 **Low Priority** 区。
+3.  **Level 3 (Session)**：
+    *   在 High 区：`Op1` 进入 Client A 的会话队列，`Op4` 进入 Client B 的队列。
+    *   在 Low 区：`Op2` 和 `Op3` 进入 Client A 的会话队列。
+
+**执行顺序**：
+Worker 线程会优先拉取 High 区任务 -> 此时可能并行执行 A 的 `Op1` 和 B 的 `Op4`。
+待 High 区清空，Worker 再拉取 Low 区任务 -> 严格按照顺序执行 `Op2` -> `Op3`（保证了 A 的顺序性）。
+
+---
+
+## 5. 总结：队列的本质
 * **waiting_for_pg / waiting_for_active**：负责 **PG 就绪态** 检查。
 * **waiting_on_map**：负责 **集群拓扑一致性（Epoch 对齐）** 检查。
 * **op_shardedwq**：负责 **并发执行**。
