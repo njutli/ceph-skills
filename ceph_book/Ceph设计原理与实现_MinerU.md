@@ -3300,6 +3300,8 @@ PGTransaction 是一种抽象数据类型，它记录了一组以原始对象（
 
 # (1)do_osdOps
 
+[深度解析：truncate_seq与截断操作保护机制](notes/36_truncate_seq与截断操作保护.md)
+
 do_osdOps直接将op携带的原始操作转化为PG事务，如图4-6所示：
 
 ![image](./images/img_0041_18bda0232e21.jpg)
