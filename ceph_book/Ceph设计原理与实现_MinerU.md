@@ -3471,6 +3471,8 @@ PG外部状态的变化最终通过其内部状态机进行驱动，该状态机
 
 # 4.3.2 创建PG
 
+[深度解析：PG 创建机制与 Monitor 下发逻辑](notes/41_PG创建机制与Monitor下发逻辑解析.md)
+
 OSDMonitor 收到存储池创建命令之后，最终通过 PGMonitor 异步向池中每个 OSD
 
 下发批量创建PG命令。和读写流程类似，PG的创建也是在Primary的主导下进行的，即PGMonitor仅需要向当前Primary所在的OSD下发PG创建请求，Replica会在随后由Primary发起的Peering过程中自动被创建。和读写请求不同，因为创建PG的过程中强烈依赖OSDMap，所以OSD收到该请求后，需要预先获取OSD内部的全局互斥锁，以确保该消息处理过程中，OSD当前关联的OSDMap不会发生变化，并最终通过handle_pg_create进行处理，处理过程如图4-11所示。
