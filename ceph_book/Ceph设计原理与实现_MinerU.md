@@ -3542,6 +3542,8 @@ Localized PG 原本是为了适配类似 Hadoop 的大数据应用所定制的�
 
 2）逐个PG处理：取OSD最新的OSDMap，通过advance_pg检查PG是否需要执行OSDMap更新操作。如果为否，说明直接由Peering事件触发，将该事件从PG内部的peering_queue队列出列，并投递至PG内部的状态机进行处理；如果为是，则在advance_pg内部直接执行OSDMap更新操作，完成之后将PG再次加入peering_wq队列。
 
+[深度解析：PG同步OSDMap机制详解——为何不能跳跃与分多次同步](notes/43_PG同步OSDMap机制详解.md)
+
 值得注意的是：如果PG当前的OSDMap与OSD的最新OSDMap版本号相差过大，为防止单个PG过多的占用时间片，需要分多次对OSDMap进行同步，因此每处理一定数量的OSDMap后（受配置项osd_map_maxadvance控制），OSD会让出时间片，将该PG重新加入peering_wq，等待下次继续执行OSDMap同步。这样处理的原因首先在于Ceph完全随机分布数据的特性，例如RBD中的一个image，一般情况下其数据最终会分布在所有PG之上，因此我们倾向于让所有PG同时恢复正常，否则任意一个PG长时间堵塞都将导致前端所有应用（例如虚拟机）无法正常工作；其次，我们期望所有PG都同
 
 步进行OSDMap更新，而不希望某个PG的OSDMap版本号落后太多，从而避免OSD需要保存大量的OSDMap，进而浪费存储空间。
