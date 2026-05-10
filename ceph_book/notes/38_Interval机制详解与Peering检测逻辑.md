@@ -31,10 +31,51 @@ struct pg_interval_t {
 Interval 的生成发生在 **OSD 收到新的 OSDMap 时**。核心逻辑位于 `PG::handle_advance_map` 函数。
 
 ### 2.2 生成逻辑
+
 每当 OSDMap 更新，PG 会对比新旧 Map 计算出的 `acting` 和 `up` 集合。
 - **变化触发**：只要这两个集合中的任何一个发生变化，就意味着**旧的 Interval 结束，新的 Interval 开始**。
 - **填充旧 Interval**：系统会将旧 Interval 的 `first`、`last`、`acting` 等信息填充完整，并计算 `maybe_went_rw`（判断该期间 PG 是否可能处于 Active 状态并接受了写入）。
 - **开启新 Interval**：更新 `info.history.same_interval_since` 为当前 Epoch，并记录新的 Acting/Up Set。
+
+**源码实现示例 (`PG::handle_advance_map`)**：
+```cpp
+// src/osd/PG.cc (简化版)
+void PG::handle_advance_map(OSDMapRef newmap, OSDMapRef oldmap) {
+    // 1. 计算当前的 acting/up
+    vector<int> new_acting;
+    int new_acting_primary;
+    int new_up_primary;
+    vector<int> new_up;
+    OSDMap::raw_pg_to_acting_up(newmap, pg_id, new_acting, new_acting_primary, new_up, new_up_primary);
+
+    // 2. 判断是否发生变化
+    bool acting_changed = (new_acting != info.history.acting) || (new_acting_primary != info.history.acting_primary);
+    bool up_changed = (new_up != info.history.up) || (new_up_primary != info.history.up_primary);
+
+    // 3. 如果变化了，关闭旧 Interval，开启新 Interval
+    if (acting_changed || up_changed) {
+        // 填充旧 Interval 的结束时间
+        pg_interval_t interval;
+        interval.first = info.history.same_interval_since;
+        interval.last = newmap->get_epoch() - 1;
+        interval.acting = info.history.acting;
+        interval.acting_primary = info.history.acting_primary;
+        // ... 填充其他字段
+
+        // 关键：计算 maybe_went_rw
+        // 逻辑很复杂，主要判断在此期间 Primary 是否存活且 up_thru 是否更新
+        interval.maybe_went_rw = ...; 
+
+        // 将旧 Interval 加入历史列表
+        info.history.intervals.push_back(interval);
+
+        // 开启新 Interval
+        info.history.same_interval_since = newmap->get_epoch();
+        info.history.acting = new_acting;
+        // ... 更新其他 current 状态
+    }
+}
+```
 
 ### 2.3 离线 OSD 的“记忆补全”
 如果一个 OSD 在宕机期间错过了多个 OSDMap 更新，它的本地 `past_intervals` 列表会停滞在掉线的那一刻。
@@ -82,10 +123,62 @@ Interval 不会单独保存，而是作为 `pg_info_t`（PG 的核心元数据�
 最终名单：`{OSD 2, OSD 3, OSD 4}`。OSD 1 向它们同时发起查询，找回所有潜在数据。
 
 ### 4.4 为什么“在场”也要问（防御性设计）
+
 即使 Primary 在某个 Interval 全程“在场”，它也会将该 Interval 的其他成员加入名单。这是为了应对：
 - **脑裂（Split-Brain）**：网络分区导致多个 Primary 同时写入，日志分叉。
 - **日志丢失**：Primary 掉电导致 Journal 未刷盘，数据比副本旧。
 - **短暂盲区**：Primary 在 Interval 中间短暂断连，错过了部分写入。
+
+### 4.5 源码实现：检测逻辑与 Down 状态的关系
+
+检测的核心逻辑位于 `PG::build_prior` 函数中。这正是回答“什么样的 Interval 能跳过”以及“为什么会导致 Down 状态”的关键。
+
+**源码实现示例 (`PG::build_prior`)**：
+```cpp
+// src/osd/PG.cc
+void PG::build_prior(PriorSet *prior) {
+    // 1. 逆序遍历 past_intervals (从最近的开始)
+    for (auto i = info.history.intervals.rbegin(); i != info.history.intervals.rend(); ++i) {
+        const pg_interval_t &interval = *i;
+
+        // 【检测条件 A】：是否发生在 last_epoch_started 之前？
+        // 如果是，说明是“旧账”，已经处理过了，直接停止遍历（因为更早的肯定也处理过了）
+        // **可跳过**
+        if (interval.last < info.last_epoch_started) {
+            break; 
+        }
+
+        // 【检测条件 B】：maybe_went_rw 是否为 false？
+        // 如果是 false，说明这段时间 PG 是“死”的，不可能有数据写入，直接跳过
+        // **可跳过**
+        if (!interval.maybe_went_rw) {
+            continue;
+        }
+
+        // 4. 如果通过了检测，说明这个 Interval "有问题" (可能写过数据)
+        // 将该 Interval 期间的 Acting Set 中的 OSD 加入探测列表 (probing)
+        for (auto osd : interval.acting) {
+            if (osd != whoami) { // 排除自己
+                prior->probing.insert(osd);
+            }
+        }
+    }
+}
+```
+
+**与 Down 状态的直接关联**：
+在表 4-15 中，**Down** 状态的定义是：“Peering 过程中，PG 检测到某个**不能被跳过**的 Interval 中……当前剩余在线的 OSD 不足以完成数据修复”。
+
+结合源码，我们可以得出：
+1. **什么样的 Interval 能跳过？**
+   - 满足**条件 A**（发生在 `last_epoch_started` 之前，旧账已结）。
+   - 满足**条件 B**（`maybe_went_rw` 为 false，期间 PG 未 Active，无数据写入）。
+2. **什么样的 Interval 不能跳过？**
+   - 同时**不满足**上述两个条件的 Interval。这意味着它既包含潜在的写入数据，又尚未被确认同步。
+3. **为什么会变成 Down 状态？**
+   - 当 Primary 遇到一个**不能跳过**的 Interval 时，它必须找到该 Interval 的 Acting Set 成员来恢复数据。
+   - 如果这些成员全部宕机或离线（即 `prior->probing` 列表为空，或者纠删码场景下存活节点数不足 k 值），Primary 就无法完成数据修复。
+   - 此时，Peering 流程无法继续，PG 只能将自己设置为 **Down** 状态，停止服务，直到那些离线的 OSD 重新上线。
 
 ---
 
