@@ -3512,6 +3512,8 @@ Localized PG 原本是为了适配类似 Hadoop 的大数据应用所定制的�
 
 # （5）更新心跳检测OSD列表
 
+[深度解析：handle_pg_peeringevt 中判断 PG 是否存在机制](notes/42_handle_pg_peeringevt中判断PG存在机制.md)
+
 为了保证PG的分布式写能够正常完成，OSD需要对和本OSD通过PG发生联系的所有OSD通过心跳机制进行监控。
 
 如果满足创建条件，在handle_pg_create的最后一步，OSD将通过向handle_pg_peering_ev t 函数投递一个NullEv t 事件，正式开始着手进行PG创建。该事件没有任何实际作用，仅仅用于初始化创建流程。
