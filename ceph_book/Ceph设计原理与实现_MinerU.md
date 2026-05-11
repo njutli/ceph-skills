@@ -3425,7 +3425,7 @@ RMW，因此这期间会多次调用 safe_create_traverse 分别执行补齐读�
 
 <table><tr><td>状态</td><td>含义</td></tr><tr><td>Activating</td><td>Peering 已经完成，PG 正在等待所有 PG 实例同步并固化 Peering 的结果（Info、Log 等）</td></tr><tr><td>Active</td><td>PG 可以正常处理来自客户端的读写请求</td></tr><tr><td>Backfilling</td><td>PG 正在执行 Backfill。
 Backfill 总是在 Recovery 完成之后进行的</td></tr><tr><td>Backfill-toofull</td><td>某个需要被 Backfill 的 PG 实例，其所在的 OSD 可用空间不足，Backfill 流程当前被挂起</td></tr><tr><td>Backfill-wait</td><td>等待 Backfill 资源预留</td></tr><tr><td>Clean</td><td>PG 当前不存在待修复的对象，Acting Set 和 Up Set 内容一致，并且大小等于存储池副本数（size）</td></tr><tr><td>Creating</td><td>PG 正在被创建</td></tr><tr><td>Deep</td><td>PG 正在或者即将进行对象一致性扫描。
-Deep 总是和 Scrubbing 成对出现，表明将对 PG 中的对象执行深度扫描（同时扫描对象元数据和用户数据）</td></tr><tr><td>Degraded</td><td>Peering完成后，PG检测到任意一个PG实例存在不一致（需要被同步/修复）的对象；或者当前 ActingSet小于存储池副本数</td></tr><tr><td>Down</td><td>Peering过程中，PG检测到某个不能被跳过的Interval中（例如该Interval期间，PG完成了Peering，并且成功切换至Active状态，从而有可能正常处理了来自客户端的读写请求），当前剩余在线的OSD不足以完成数据修复</td></tr><tr><td>Incomplete</td><td>Peering过程中，由于：1）无法选出权威日志2）通过choose Acting选出的Acting Set后续不足以完成数据修复（例如针对纠删码，存活的副本数小于k值）（注意：与Down的区别在于这里选不出来的原因是由于某些副本的日志不完整）等导致Peering无法正常完成</td></tr><tr><td>Inconsistent</td><td>PG通过Scrub检测到某个或者某些对象在PG实例间出现了不一致（主要是静默数据错误导致）</td></tr><tr><td>Peered</td><td>Peering已经完成，但是PG当前ActingSet规模小于存储池规定的最小副本数（min_size）</td></tr><tr><td>Peering</td><td>PG正在进行Peering</td></tr><tr><td>Recovering</td><td>Recovery资源预留成功，PG正在后台根据Peering的结果针对不一致的对象进行同步/修复</td></tr><tr><td>Recovery-wait</td><td>等待Recovery资源预留</td></tr><tr><td>Remapped</td><td>Peering完成，PG当前Acting Set与Up Set不一致</td></tr><tr><td>Repair</td><td>PG在下一次执行Scrub的过程中，如果发现存在不一致的对象，并且能够修复，则自动进行修复</td></tr><tr><td>Scrubbing</td><td>PG正在或者即将进行对象一致性扫描。Scrubbing仅扫描对象的元数据</td></tr><tr><td>Stale</td><td>Monitor检测到当前Primary所在的OSD宕掉；或者Primary超时未向Monitor上报PG相关的统计信息（例如出现临时性的网络拥塞）</td></tr><tr><td>Undersized</td><td>PG当前Acting Set小于存储池副本数</td></tr></table>
+Deep 总是和 Scrubbing 成对出现，表明将对 PG 中的对象执行深度扫描（同时扫描对象元数据和用户数据）</td></tr><tr><td>Degraded</td><td>Peering完成后，PG检测到任意一个PG实例存在不一致（需要被同步/修复）的对象；或者当前 ActingSet小于存储池副本数</td></tr><tr><td>Down</td><td>Peering过程中，PG检测到某个不能被跳过的Interval中（例如该Interval期间，PG完成了Peering，并且成功切换至Active状态，从而有可能正常处理了来自客户端的读写请求），当前剩余在线的OSD不足以完成数据修复</td></tr><tr><td>Incomplete</td><td>Peering过程中，由于：1）无法选出权威日志2）通过choose_acting选出的Acting Set后续不足以完成数据修复（例如针对纠删码，存活的副本数小于k值）（注意：与Down的区别在于这里选不出来的原因是由于某些副本的日志不完整）等导致Peering无法正常完成</td></tr><tr><td>Inconsistent</td><td>PG通过Scrub检测到某个或者某些对象在PG实例间出现了不一致（主要是静默数据错误导致）</td></tr><tr><td>Peered</td><td>Peering已经完成，但是PG当前ActingSet规模小于存储池规定的最小副本数（min_size）</td></tr><tr><td>Peering</td><td>PG正在进行Peering</td></tr><tr><td>Recovering</td><td>Recovery资源预留成功，PG正在后台根据Peering的结果针对不一致的对象进行同步/修复</td></tr><tr><td>Recovery-wait</td><td>等待Recovery资源预留</td></tr><tr><td>Remapped</td><td>Peering完成，PG当前Acting Set与Up Set不一致</td></tr><tr><td>Repair</td><td>PG在下一次执行Scrub的过程中，如果发现存在不一致的对象，并且能够修复，则自动进行修复</td></tr><tr><td>Scrubbing</td><td>PG正在或者即将进行对象一致性扫描。Scrubbing仅扫描对象的元数据</td></tr><tr><td>Stale</td><td>Monitor检测到当前Primary所在的OSD宕掉；或者Primary超时未向Monitor上报PG相关的统计信息（例如出现临时性的网络拥塞）</td></tr><tr><td>Undersized</td><td>PG当前Acting Set小于存储池副本数</td></tr></table>
 
 [深度解析：Interval 机制详解与 Peering 检测逻辑](notes/38_Interval机制详解与Peering检测逻辑.md)
 
@@ -3683,7 +3683,7 @@ Epoch 5: A
 
 上述策略之所以可行，例如不必担心日志产生不连续性的原因在于：为了保证每个Interval切换之后能够正常发生客户端读写，PG必须首先在新的Interval内成功完成Peering，而Peering成功完成必然意味着PG至少已经将全部Acting Set中的日志记录同步到了最新。因此，实际操作时，我们可以进一步缩小权威日志的候选范围，仅从最近一次成功完成过Peering的那些PG当中选取，由前面的分析，即需要查找所有Info当中最大的last_epoch_started，并以此作为基准。
 
-如果选取权威日志失败，那么PG将向状态机发送一个IsIncomplete事件，跳转至Started/Primary/Peering/Incomplete状态，同时将自身状态设置为Incomplete。反之，PG可以开始基于权威日志进行日志同步，为此需要确定PriorSet当中哪些副本需要或者值得去同步，这个过程称为choose Acting，我们仍然以多副本为例进行说明。
+如果选取权威日志失败，那么PG将向状态机发送一个IsIncomplete事件，跳转至Started/Primary/Peering/Incomplete状态，同时将自身状态设置为Incomplete。反之，PG可以开始基于权威日志进行日志同步，为此需要确定PriorSet当中哪些副本需要或者值得去同步，这个过程称为choose_acting，我们仍然以多副本为例进行说明。
 
 理论上，因为我们强烈依赖于CRUSH的伪随机性（这同样意味着公平性）在OSD间平均分配PG及其副本，进而在集群内实现负载均衡，所以一个显而易见的指导原则是尽量选取由当前OSDMap计算得到的UpSet当中的副本。然而，也正由于CRUSH选择UpSet的随机性，某些情况下，UpSet中的某些OSD或者因为没有PG的任何历史信息，或者因为PG版本过于落后（PG能够保存的日志是有限的），导致它们无法通过日志以增量的方式（称为Recovery）同步，而只能通过拷贝其他健康PG中全部内容的方式（称为Backfill，Recovery和Backfill流程我们将在下文中进一步描述）来进行同步，如果这种情况发生在Primary之上，将导致PG长时间无法接受客户端发起的读写请求，这显然不可接受。
 
@@ -3696,17 +3696,17 @@ Epoch 5: A
 考虑到我们最终仍然需要将 Acting Set 切回 Up Set，因此，在 Peering 成功完成之后，Acting Set 切回 Up Set 之前，为了避免不必要的数据同步，我们需要针对在此期间由客户端所产生的写请求进行特殊处理。如果该对象正在被 ActingBackfill 集合当中任意一个 OSD 执行 Backfill，则阻塞此请求，等待 Backfill 完成后，按如下方式处理：所有 Acting Set 中的 OSD 和所有已经完成该对象 Backfill 的 OSD，正常执行事务；所有尚未完成该对象 Backfill 的 OSD，则直接执行一个空事务（因为这些 OSD 上还不存在这些对象！），仅用于更新日志、统计等元数据信息。 [深度解析：Backfill与写请求的阻塞与放行逻辑](notes/47_Backfill与写请求的阻塞与放行解析.md)
 
 [深度解析：choose_acting候选范围与选择标准解析](notes/48_choose_acting候选范围与选择标准解析.md)
-至此，我们已经能够理解choose Acting名称的由来——它的目的即用于为PG选出一组新的OSD充当Acting Set。为了和CRUSH计算的结果进行区分，我们将choose Acting选择的结果称为want Acting（这是因为，如果choose Acting选出来的Acting Set和CRUSH计算出来的Up Set不一致，由前面的分析，我们还需要通过PG Temp的方式告知Monitor去同步修改，让它在新的OSDMap中生效，才能在后续的CRUSH计算结果中生效变为真正的Acting Set，为客户端所感知并临时承担客户端的读写请求，所以在此之前只能被称为want Acting)，选择过程中的指导原则需要修正为：
+至此，我们已经能够理解choose_acting名称的由来——它的目的即用于为PG选出一组新的OSD充当Acting Set。为了和CRUSH计算的结果进行区分，我们将choose_acting选择的结果称为want_acting（这是因为，如果choose_acting选出来的Acting Set和CRUSH计算出来的Up Set不一致，由前面的分析，我们还需要通过PG Temp的方式告知Monitor去同步修改，让它在新的OSDMap中生效，才能在后续的CRUSH计算结果中生效变为真正的Acting Set，为客户端所感知并临时承担客户端的读写请求，所以在此之前只能被称为want_acting)，选择过程中的指导原则需要修正为：
 
-□首先选取Primary。如果当前Up Set中的Primary能够基于权威日志修复或者自身就是权威日志，则直接将其选为Primary；否则选择权威日志所在的OSD作为Primary。选中的Primary同步加入want Acting列表。
+□首先选取Primary。如果当前Up Set中的Primary能够基于权威日志修复或者自身就是权威日志，则直接将其选为Primary；否则选择权威日志所在的OSD作为Primary。选中的Primary同步加入want_acting列表。
 
-其次，依次考虑 Up Set 所有不在 want Acting 列表中的 OSD，如果其还能够基于权威日志修复，则加入 want Acting 列表，等待后续通过日志修复；反之，将其加入 Backfill 列表，等待后续通过 Backfill 方式修复。
+其次，依次考虑 Up Set 所有不在 want_acting 列表中的 OSD，如果其还能够基于权威日志修复，则加入 want_acting 列表，等待后续通过日志修复；反之，将其加入 Backfill 列表，等待后续通过 Backfill 方式修复。
 
-□如果当前want Acting列表大小等于存储池副本数，则终止；否则继续从当前Acting Set中依次选择能够基于日志修复的OSD加入want acting列表；
+□如果当前want_acting列表大小等于存储池副本数，则终止；否则继续从当前Acting Set中依次选择能够基于日志修复的OSD加入want_acting列表；
 
-□如果当前want Acting列表大小等于存储池副本数，则终止；否则继续从所有返回过Info的OSD中选取能够基于日志修复的OSD加入want Acting列表，直至当前want Acting大小等于存储池副本数，或者所有返回过Info的OSD遍历完成。
+□如果当前want_acting列表大小等于存储池副本数，则终止；否则继续从所有返回过Info的OSD中选取能够基于日志修复的OSD加入want_acting列表，直至当前want_acting大小等于存储池副本数，或者所有返回过Info的OSD遍历完成。
 
-如果choose Acting选不出来足够的副本完成数据同步（例如针对纠删码而言，要求存活的副本数不小于k值才能进行数据修复），那么PG将进入Incomplete状态；如果choose Acting选出来的want Acting和当前的Acting Set不一致，说明需要借助PG Temp临时进行过渡，Primary将首先向Monitor发送设置PG Temp请求，随后向状态机投递一个Need Acting Change事件，将状态机设置为Started/Primary/Wait Acting Change状态，等待PG Temp在新的OSDMap生效后继续。
+如果choose_acting选不出来足够的副本完成数据同步（例如针对纠删码而言，要求存活的副本数不小于k值才能进行数据修复），那么PG将进入Incomplete状态；如果choose_acting选出来的want_acting和当前的Acting Set不一致，说明需要借助PG Temp临时进行过渡，Primary将首先向Monitor发送设置PG Temp请求，随后向状态机投递一个NeedActingChange事件，将状态机设置为Started/Primary/WaitActingChange状态，等待PG Temp在新的OSDMap生效后继续。
 
 自Jewel版本开始，为了进一步缩短Peering流程，Ceph引入了一种对PGTemp进行预填充的机制，称为Prime PG Temp，其主要设想在于每次OSDMonitor在新的OSDMap生效之后，同步计算基于当前OSDMap产生的所有PG映射结果，然后赶在下一个OSDMap生效之前，判定本次OSDMap变化是否有可能会导致某些PG发生Remapping。如果有可能，例如下一个OSDMap变化是由某些OSD宕掉触发，则基于下一个即将生效的OSDMap实时计算新的PG映射结果，并与基于当前OSDMap计算得到的PG映射结果相比较，预先填充那些即将受到影响PG的PG Temp并使之在下一个OSDMap中一并生效，从而避免这些PG在后续Peering过程中再次向OSDMonitor请求更新PG Temp。需要注意的是，这种预填充带有猜测性质，如果PG后续通过Peering选出来的PG Temp与之不相符，仍然可以通过发送PG Temp请求至OSDMonitor进行修改。
 

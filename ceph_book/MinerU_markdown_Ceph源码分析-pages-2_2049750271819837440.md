@@ -2889,7 +2889,7 @@ struct pg_interval_t {
 上例中，past_interval对象的p值为：
 
 ```txt
-p = {up = [0,1,2], acting = [0,1,2], first = 20, last = 23, maybe_went_rw = true, primary = 0, upPrimay = 0, 
+p = {up = [0,1,2], acting = [0,1,2], first = 20, last = 23, maybe_went_rw = true, primary = 0, upPrimary = 0, 
 ```
 
 函数 generatepast_intervals 用于计算 past_intervals 的值，计算的结果保存在 PG 中 past_intervals 的 map 结构里，map 的 key 值为 first epoch 的值：
@@ -3087,19 +3087,19 @@ PG::RecoveryState::GetLog::GetLog(my_context ctx)
 
 然后在GetLog的构造函数里做相应的处理，其具体处理过程分析如下：
 
-1）调用函数 pg->choose Acting(auth_log_shard) 选出具有权威日志的 OSD，并计算出 acting_backfill 和 backfill_targets 两个 OSD 列表。输出保存在 auth_log_shard 里。
+1）调用函数 pg->choose_acting(auth_log_shard) 选出具有权威日志的 OSD，并计算出 acting_backfill 和 backfill_targets 两个 OSD 列表。输出保存在 auth_log_shard 里。
 
-2）如果选择失败并且want Acting不为空，就抛出NeedActingChange事件，状态机转移到Primary/WaitActingChang状态，等待申请临时PG返回结果。如果want Acting为空，就抛出IsIncomplete事件，PG的状态机转移到Primay/Peering/Incomplete状态。表明失败，PG就处于Incomplete状态。
+2）如果选择失败并且want_acting不为空，就抛出NeedActingChange事件，状态机转移到Primary/WaitActingChange状态，等待申请临时PG返回结果。如果want_acting为空，就抛出IsIncomplete事件，PG的状态机转移到Primary/Peering/Incomplete状态。表明失败，PG就处于Incomplete状态。
 
 3）如果auth_log_shard等于pg->pg_whoami的值，也就是选出的拥有权威日志的OSD为当前主OSD，直接抛出事件GotLog()完成GetLog过程。
 
-4）如果 pg->info.last_update 小于权威 OSD 的 log.tail，也就是本 OSD 的日志和权威日志不重叠，那么本 OSD 无法恢复，抛出 IsIncomplete 事件。经过函数 choose Acting 的选择后，主 OSD 必须是可恢复的。如果主 OSD 不可恢复，必须申请一个临时 PG，选择拥有权威日志的 OSD 为临时主 OSD。
+4）如果 pg->info.last_update 小于权威 OSD 的 log.tail，也就是本 OSD 的日志和权威日志不重叠，那么本 OSD 无法恢复，抛出 IsIncomplete 事件。经过函数 choose_acting 的选择后，主 OSD 必须是可恢复的。如果主 OSD 不可恢复，必须申请一个临时 PG，选择拥有权威日志的 OSD 为临时主 OSD。
 
 5）如果自己不是权威日志的OSD，则需要去拥有权威日志的OSD上去拉取权威日志，并与本地合并。
 
-# 1. choose Acting
+# 1. choose_acting
 
-函数choose Acting用来计算PG的acting_backfill和backfill_targets两个OSD列表。acting_backfill保存了当前PG的acting列表，包括需要进行Backfill操作的OSD列表；backfill_targets列表保存了需要进行Backfill的OSD列表。其处理过程如下：
+函数choose_acting用来计算PG的acting_backfill和backfill_targets两个OSD列表。acting_backfill保存了当前PG的acting列表，包括需要进行Backfill操作的OSD列表；backfill_targets列表保存了需要进行Backfill的OSD列表。其处理过程如下：
 
 1）首先调用函数 find_best_info 来选举出一个拥有权威日志的 OSD，保存在变量 auth_log_shard 里。
 
@@ -3107,33 +3107,33 @@ PG::RecoveryState::GetLog::GetLog(my_context ctx)
 
 a）如果up不等于acting，申请临时PG，返回false值。
 
-b）否则确保want Acting列表为空，返回false值。
+b）否则确保want_acting列表为空，返回false值。
 
 3）计算是否是compat_mode模式，检查是，如果所有的OSD都支持纠删码，就设置compat_mode值为true。
 
-4）根据PG的不同类型，调用不同的函数，对应ReplicatedPG调用函数calc_replicated Acting来计算PG的需要列表：
+4）根据PG的不同类型，调用不同的函数，对应ReplicatedPG调用函数calc_replicated_acting来计算PG的需要列表：
 
 ```txt
-set<pg_shard_t> want_backfill, want Acting_backfill; //want_backfill为该PG需要进行Backfill的pg_shard //want Acting backfill包括进行acting和Backfill的pg_shard pg_shard_t want_primary; //主OSD vector<int> want; //在compat_mode模式下，和want Acting backfill相同
+set<pg_shard_t> want_backfill, want_acting_backfill; //want_backfill为该PG需要进行Backfill的pg_shard //want_acting_backfill包括进行acting和Backfill的pg_shard pg_shard_t want_primary; //主OSD vector<int> want; //在compat_mode模式下，和want_acting_backfill相同
 ```
 
 5）下面就是对PG做的一些检查：
 
-a）计算num_want Acting数量，检查如果小于min_size，进行如下操作：
+a）计算num_want_acting数量，检查如果小于min_size，进行如下操作：
 
-- 如果对于 EC，清空 want acting，返回 false 值。
+- 如果对于 EC，清空 want_acting，返回 false 值。
 
-- 对于ReplicatePG，如果该PG不允许小于min_size的恢复，清空want Acting，返回false值。
+- 对于ReplicatePG，如果该PG不允许小于min_size的恢复，清空want_acting，返回false值。
 
-b）调用IsPGRecoverablePredicate来判断PG现有的OSD列表是否可以恢复，如果不能恢复，清空want Acting，返回false值。
+b）调用IsPGRecoverablePredicate来判断PG现有的OSD列表是否可以恢复，如果不能恢复，清空want_acting，返回false值。
 
-6）检查如果want不等于acting，设置want Acting为want：
+6）检查如果want不等于acting，设置want_acting为want：
 
 a）如果wang acting等于up，申请empty为pg_temp的OSD列表。
 
 b）否则申请want为pg_temp的OSD列表。
 
-7）最后设置PG的actingbackfill为want Acting backfill，设置backfill_targets为want backfill，并检查backfill_targets里的pg_shard应该不在stray_set里面。
+7）最后设置PG的actingbackfill为want_acting_backfill，设置backfill_targets为want backfill，并检查backfill_targets里的pg_shard应该不在stray_set里面。
 
 8）最终返回 true 值。
 
@@ -3143,7 +3143,7 @@ b）否则申请want为pg_temp的OSD列表。
 
 2）此时，osd0崩溃，导致该PG经过CRUSH算法重新获得acting和up列表都为[3,1,2]。
 
-3）选择出拥有权威日志的osd为1，经过calc_replicated Acting算法，want列表为[1,3,2]，acting_backfill为[1,3,2]，want_backfill为[3]。特别注意want列表第一个为主OSD，如果up primay无法恢复，就选择权威日志的OSD为主OSD。
+3）选择出拥有权威日志的osd为1，经过calc_replicated_acting算法，want列表为[1,3,2]，acting_backfill为[1,3,2]，want_backfill为[3]。特别注意want列表第一个为主OSD，如果up_primary无法恢复，就选择权威日志的OSD为主OSD。
 
 4）want[1,3,2]不等于acting[3,1,2]时，并且不等于up[3,1,2]，需要向Monitor申请pg_temp为want。
 
@@ -3179,7 +3179,7 @@ d）如果上述条件都相同，选择当前的主OSD。
 
 综上的选择过程可知：拥有权威日志的OSD特征如下：必须是非incomplete的OSD；必须有最大last_epoch_strated；last_update有可能是最大，但至少是min_last_update_acceptable，有可能是日志最长的OSD，有可能是主OSD。
 
-# 3. calc_replicated Acting
+# 3. calc_replicated_acting
 
 本函数计算本PG相关的下列OSD列表：
 
@@ -3187,23 +3187,23 @@ d）如果上述条件都相同，选择当前的主OSD。
 
 □ backfill：需要进行 Backfill 操作的 OSD。
 
-□ acting backfill：所有进行 acting 和 Backfill 的 OSD 的集合。
+□ acting_backfill：所有进行 acting 和 Backfill 的 OSD 的集合。
 
-want和acting backfill的OSD相同，前者类型是pg_shard_t，后者为int型。
+want和acting_backfill的OSD相同，前者类型是pg_shard_t，后者为int型。
 
 具体处理过程如下：
 
-1）首先选择want primay列表中的OSD：
+1）首先选择want_primary列表中的OSD：
 
 a）如果up_primary处于非incomplete状态，并且last_update大于等于权威日志的log.tail，说明up_primary的日志和权威日志有重叠，可通过日志记录恢复，优先选择up_primary为主OSD。
 
-b）否则选择auth log shard，也就是拥有权威日志的OSD为主OSD。
+b）否则选择auth_log_shard，也就是拥有权威日志的OSD为主OSD。
 
 c）把主OSD加入到want和actingbackfill列表中。
 
 2）函数的输入参数 size 为要选择的副本数，依次从 up、acting、all_info 里选择 size 个副本 OSD:
 
-a）如果该OSD上的PG处于incomplete的状态，或者cur_info.last_update小于主OSD和auth_log_shard的最小值，则该PG副本无法通过日志修复，只能通过Backfill操作来修复。把该OSD分别加入backfill和acting backfill集合中。
+a）如果该OSD上的PG处于incomplete的状态，或者cur_info.last_update小于主OSD和auth_log_shard的最小值，则该PG副本无法通过日志修复，只能通过Backfill操作来修复。把该OSD分别加入backfill和acting_backfill集合中。
 
 b）否则就可以根据PG日志来恢复，只加入acting_backfill集和want列表中，不用加入到Backfill列表中。
 
