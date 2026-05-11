@@ -3693,7 +3693,7 @@ Epoch 5: A
 
 上述 Acting Set 和 Up Set 不一致的现象，我们称为 Remapped，它同时也是一种 PG 外部状态，表明当前 Up Set 中的某些 OSD 需要或者正在通过 Backfill 进行修复，这些 OSD 和当前 Acting Set 中的所有 OSD 一起组成一个新的集合，我们称为 ActingBackfill。
 
-考虑到我们最终仍然需要将 Acting Set 切回 Up Set，因此，在 Peering 成功完成之后，Acting Set 切回 Up Set 之前，为了避免不必要的数据同步，我们需要针对在此期间由客户端所产生的写请求进行特殊处理。如果该对象正在被 ActingBackfill 集合当中任意一个 OSD 执行 Backfill，则阻塞此请求，等待 Backfill 完成后，按如下方式处理：所有 Acting Set 中的 OSD 和所有已经完成该对象 Backfill 的 OSD，正常执行事务；所有尚未完成该对象 Backfill 的 OSD，则直接执行一个空事务（因为这些 OSD 上还不存在这些对象！），仅用于更新日志、统计等元数据信息。
+考虑到我们最终仍然需要将 Acting Set 切回 Up Set，因此，在 Peering 成功完成之后，Acting Set 切回 Up Set 之前，为了避免不必要的数据同步，我们需要针对在此期间由客户端所产生的写请求进行特殊处理。如果该对象正在被 ActingBackfill 集合当中任意一个 OSD 执行 Backfill，则阻塞此请求，等待 Backfill 完成后，按如下方式处理：所有 Acting Set 中的 OSD 和所有已经完成该对象 Backfill 的 OSD，正常执行事务；所有尚未完成该对象 Backfill 的 OSD，则直接执行一个空事务（因为这些 OSD 上还不存在这些对象！），仅用于更新日志、统计等元数据信息。 [深度解析：Backfill与写请求的阻塞与放行逻辑](notes/47_Backfill与写请求的阻塞与放行解析.md)
 
 至此，我们已经能够理解choose Acting名称的由来——它的目的即用于为PG选出一组新的OSD充当Acting Set。为了和CRUSH计算的结果进行区分，我们将choose Acting选择的结果称为want Acting（这是因为，如果choose Acting选出来的Acting Set和CRUSH计算出来的Up Set不一致，由前面的分析，我们还需要通过PG Temp的方式告知Monitor去同步修改，让它在新的OSDMap中生效，才能在后续的CRUSH计算结果中生效变为真正的Acting Set，为客户端所感知并临时承担客户端的读写请求，所以在此之前只能被称为want Acting)，选择过程中的指导原则需要修正为：
 
