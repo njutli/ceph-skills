@@ -3689,7 +3689,7 @@ Epoch 5: A
 
 一个变通的办法是尽可能选择一些还保留有相对完整内容的 PG 副本进行过渡，对应的 OSD 称为 PG Temp（即这些 OSD 是 PG 的“临时”载体）。进一步的，我们通过在 OSDMap 中设置 PG Temp，并显式替换 CRUSH 的计算结果（为此我们需要对基于 CRUSH“计算”得到的 PG 映射结果进行区分：一种对应原始计算结果，称为 Up Set；另一种称为 Acting Set，其结果依赖于 PG Temp——如果 PG Temp 有效，则使用 PG Temp 填充，否则使用 Up Set 填充。当客户端需要向集群发送读写请求时，总是选择当前 Acting Set 中的第一个 OSD（亦即 Acting Primary）进行发送），可以在 PG Temp 完成 Peering 之后，将客户端的读写请求重定向到新的 Primary 之上，从而缩短对外业务中断
 
-时间。当 Up Set 中的副本在后台通过 Recovery 或者 Backfill 完成数据同步时，此时可以通知 OSDMonitor 取消 PG Temp，使得 Acting Set 和 Up Set 再次达成一致，客户端后续的读写业务也随之切回至老的 Primary（即 Up Primary）。
+时间。当 Up Set 中的副本在后台通过 Recovery 或者 Backfill 完成数据同步时，此时可以通知 OSDMonitor 取消 PG Temp，使得 Acting Set 和 Up Set 再次达成一致，客户端后续的读写业务也随之切回至老的 Primary（即 Up Primary）。 [深度解析：PG Temp机制与Backfill主节点保护](notes/46_PG_Temp机制与Backfill主节点保护解析.md)
 
 上述 Acting Set 和 Up Set 不一致的现象，我们称为 Remapped，它同时也是一种 PG 外部状态，表明当前 Up Set 中的某些 OSD 需要或者正在通过 Backfill 进行修复，这些 OSD 和当前 Acting Set 中的所有 OSD 一起组成一个新的集合，我们称为 ActingBackfill。
 
