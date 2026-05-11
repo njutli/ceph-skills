@@ -3657,7 +3657,7 @@ Epoch 5: A
 
 当 Peering 接近尾声之时（PG 变为 Active 之前），为了避免由于 OSD 再次掉电导致前功尽弃，我们将在最后一步由 Primary 通知所有副本更新 Info 中的 last_epoch_started，将其指向本次 Peering 成功完成时的 Epoch，和日志以及 Info 中的其他信息一并固化至本地磁盘。因此，如果 Interval 发生在当前 Primary 的 last_epoch_started 之前，说明其在上一次成功完成的 Peering 中已经被处理过，无需再次进行处理。这也解释了为什么我们要针对 past_intervals 进行逆序遍历，因为一旦某个 Interval 发生在 Primary 的 last_epoch_started 之前，那么 past_intervals 中更早的 Interval 必然都可以直接忽略，此时可以直接结束遍历。
 
-需要注意的是，Info当中实际保存了两个last_epoch_started属性，一个位于Info属性之下，另一个则位于Info的History子属性之下；前者由每个副本收到Primary发送的Peering完成通知（Notify）之后更新并和Peering结果一并存盘，后者由Primary收到所有副本Peering完成通知应答之后才能更新和存盘。Primary在更新History中的last_epoch_started属性后，会同步设置PG为Active状态（如果此时Acting Set小于存储池最小副本数，则为Peered状态），因此History中last_epoch_started也用于指示PG最近一次开始接受客户端读写请求时的Epoch。
+需要注意的是，Info当中实际保存了两个last_epoch_started属性，一个位于Info属性之下，另一个则位于Info的History子属性之下；前者由每个副本收到Primary发送的Peering完成通知（Notify）之后更新并和Peering结果一并存盘，后者由Primary收到所有副本Peering完成通知应答之后才能更新和存盘。Primary在更新History中的last_epoch_started属性后，会同步设置PG为Active状态（如果此时Acting Set小于存储池最小副本数，则为Peered状态），因此History中last_epoch_started也用于指示PG最近一次开始接受客户端读写请求时的Epoch。 [深度解析：last_epoch_started 机制与Peering结果存盘](notes/45_last_epoch_started机制与Peering结果存盘解析.md)
 
 其次，Interval中的maybe_went_rw属性不能为false。
 
