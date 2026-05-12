@@ -4046,6 +4046,8 @@ OSD支持多种不同类型的子队列，目前主要包括优先级队列（pr
 
 <table><tr><td>操作类型</td><td>说明</td></tr><tr><td>ClientOp</td><td>来自客户端的读写I/O请求</td></tr><tr><td>SubOp</td><td>OSD之间的I/O请求。主要包括由客户端I/O产生的副本间数据读写请求，以及由数据同步、数据扫描、负载均衡等引起的I/O请求</td></tr><tr><td>SnapTrim</td><td>快照数据删除。从客户端发送快照删除命令后，删除相关元数据便直接返回，之后由后台线程删除真实的快照数据。按快照对象逐个删除，每个snaptrim操作对应多个对象，通过控制snaptrim的速率间接控制快照数据删除速率</td></tr><tr><td>Scrub</td><td>Scrub用于发现对象的静默数据错误，包括只扫描对象元数据的Scrub，及针对对象整体扫描的deep Scrub</td></tr><tr><td>Recovery</td><td>数据恢复和迁移。集群扩容、OSD失效或重新加入、手动进行数据重平衡等操作都有可能触发recovery过程</td></tr></table>
 
+*   [**52_SubOp与Recovery机制关联.md**](notes/52_SubOp与Recovery机制关联.md)
+
 采用dmClock实现系统QoS的关键是在ShardedOpWQ中再派生出一种dmClock队列，下面将分别对原有prio队列、wpq队列以及新增的dmClock队列加以分析。
 
 # 5.3.1 优先级队列（prio）
