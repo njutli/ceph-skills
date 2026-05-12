@@ -3834,6 +3834,8 @@ MissingLoc 内部可以细分为两张表，分别称为 needs_recovery_map 和 
 
 随着PG进入Active状态，Peering流程正式宣告完成，此后PG可以正常处理来自客户端的读写请求，Recovery或者Backfill可以切换至后台进行。
 
+[深度解析：Peering全阶段流程总结（GetInfo、GetLog、Activate五步曲）](notes/50_Peering全阶段流程总结.md)
+
 # 4.3.4 Recovery
 
 如果 Primary 检测到自身或者任意一个 Peer 存在待修复的对象，将通过向状态机投递一个 DoRecovery 事件，切换至 Started/Primary/Active/WaitLocalRecoveryReserved 状态，准备开始执行 Recovery，此时 PG 进入 Recovery_wait 状态。
