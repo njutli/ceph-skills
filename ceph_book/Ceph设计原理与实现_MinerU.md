@@ -4823,6 +4823,8 @@ RBD快照的实现主要基于RADOS层所提供的对象快照功能。在对RBD
 
 # 1. RADOS 快照
 
+[[notes/56_RADOS快照底层机制解析]]
+
 RADOS层支持对单个RADOS对象的快照操作，由于快照的存在，一个RADOS对象由一个head对象和可能的多个克隆（clone）对象组成。在OSD端使用SnapSet结构体来保存对象的快照信息，其中clone_overlap字段记录clone对象与head对象的数据内容重叠的区间，该字段可用于对象数据恢复时减少OSD之间的数据传输。
 
 RADOS 对象创建快照后的数据读取流程实际上非常简单，RADOS 客户端在读操作中需要携带需要读取的 RADOS 对象的 snapid，通过 snapid 定位到 clone 对象或 head 对象即可读到相应的数据。因此下面以图示来描述对 RADOS 对象创建快照后的数据写流程，具体的实现可参考 4.2.4 节中关于 make_writable 的解读。
