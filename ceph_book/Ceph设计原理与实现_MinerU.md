@@ -3955,6 +3955,8 @@ dmClock是一种用于分布式系统的I/O调度算法，由2010年发表在OSD
 
 # 5.2 dmClock算法原理
 
+*   [**51_dmClock调度算法.md**](notes/51_dmClock调度算法.md)
+
 dmClock算法是一种分布式的mClock算法。为了更好地理解dmClock，我们首先介绍mClock的基本概念和原理。
 
 # 5.2.1 mClock
