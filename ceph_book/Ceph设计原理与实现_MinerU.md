@@ -4382,6 +4382,8 @@ rbd_header对象名由rbd_header.前缀和image id组成：rbd_header.<id>，其
 
 <table><tr><td>key</td><td>type</td><td>备注</td></tr><tr><td>data_pool_id</td><td>omap</td><td>指定将数据对象存储在与元数据对象不同的存储池</td></tr><tr><td>features</td><td>data</td><td>已启用的功能特性</td></tr><tr><td>object_prefix</td><td>omap</td><td>数据对象名称前缀</td></tr><tr><td>order</td><td>omap</td><td>组成 image 的数据对象容量大小，以2为底的指数</td></tr><tr><td>parent</td><td>omap</td><td>当存在克隆关系时，克隆image记录的关联的父image快照信息</td></tr><tr><td>size</td><td>omap</td><td>容量大小</td></tr><tr><td>snap_seq</td><td>omap</td><td>最近一次创建的快照的快照id</td></tr><tr><td>snapshot&lt;snap_id&gt;</td><td>omap</td><td>id为snap_id的快照的基本信息</td></tr><tr><td>stripe_count</td><td>omap</td><td>条带宽度，数据对象间进行条带化的参数</td></tr><tr><td>stripe_unit</td><td>omap</td><td>条带大小，数据对象间进行条带化的参数</td></tr><tr><td>lock.rbd_lock</td><td>xattr</td><td>控制image互斥访问的锁信息</td></tr></table>
 
+[[notes/55_条带化参数StripeUnit与Count]]
+
 data_pool_id所记录的元数据是一个64位的整型数据，用于记录数据对象所属的存
 
 储池，通常情况下 image 的数据和元数据存储在同一个存储池下，此时 rbd_header 对象中不存在 data_pool_id 元数据记录。由于当前 EC 纠删码存储池不支持 omap，为了解决 RBD 支持 EC 纠删码存储的问题，必须将数据对象和元数据对象进行分离存储，因此需要一个独立的 data_pool_id 元数据用于记录数据对象所在的存储池。如下所示 image 的数据存储使用的是 id 为 1 的存储池：
