@@ -12,29 +12,34 @@
 *   **控制面**：所有描述数据位置、属性的信息全部存入 KVDB (RocksDB)。
 
 ### 1. 转换机制：元数据 -> KV 对
-BlueStore 通过一种**命名规则**将复杂的对象结构“拍平”成字符串 Key。
-Key 的构造通常遵循：`[Collection ID]_[Object ID]_[Metadata Type]`。
+BlueStore 通过一种**紧凑的二进制编码（Binary Encoding）**将复杂的对象结构转换为 KV 对，而不是人类可读的纯字符串。
+*   **Key (键)**：采用 **`前缀 + 二进制序列化`** 的结构。
+    *   **前缀 (Prefix)**：源码（`src/os/bluestore/BlueStore.cc`）中定义了明确的前缀常量，如 `PREFIX_COLL` ("C") 用于标识 Collection，`PREFIX_OBJ` ("O") 用于标识对象。
+    *   **编码**：前缀之后紧跟的是 Collection ID、Object ID 以及元数据类型的**二进制哈希值或序列化结构体**。这保证了极小的存储体积和极快的解析速度（源码避免使用字符串查找的开销）。
+*   **Value (值)**：存储实际的物理信息或属性结构体（如序列化的 `bluestore_onode_t`）。
 
-*   **Key (键)**：唯一标识符。例如，`C_1_obj_rbd_data.1024_blob`。这告诉系统这是 ID 为 `rbd_data.1024` 的对象的 **Blob (物理块位置)** 信息。
-*   **Value (值)**：存储实际的物理信息或属性值。对于 `blob`，Value 通常是一个 **Extent (物理地址描述)**，例如 `[LBA=5000, Length=4MB]`。
-
-### 2. 索引与读取过程
-当系统需要读取一个对象时，它不直接读数据盘，而是先查“地图” (KVDB)。
+### 2. 索引与读取过程：查找 Onode 再解析分片
+当系统需要读取一个对象时，它不直接读数据盘，而是先通过 KV 查找**Onode**。
 
 **具体示例**：
 假设客户端请求读取对象 `rbd_data.1024` 的内容。
 
 1.  **构造 Key**：
-    OSD 收到请求，根据规则在内存中拼出 Key：`C_1_obj_rbd_data.1024_blob`。
+    OSD 收到请求，生成对应的二进制 Key：`['O', Collection ID序列化, Object ID序列化]`（即 `PREFIX_OBJ` 组合）。
 
-2.  **查询 KVDB (RocksDB)**：
-    向 RocksDB 发起 `Get(Key)` 请求。
-    RocksDB 返回对应的 Value：`[LBA=5000, Length=4MB]`。
+2.  **查询 KVDB (RocksDB) 获取 Onode**：
+    向 RocksDB 发起查询。RocksDB 返回的 Value 不是直接的物理地址，而是该对象的**元数据核心 —— Onode**（序列化后的 `bluestore_onode_t` 结构）。
 
-3.  **直接物理读取**：
-    BlueStore 拿到物理地址 (LBA=5000) 后，**完全绕过文件系统逻辑**，直接向底层磁盘发起 I/O 读取指令：*“从第 5000 号扇区开始读取 4MB”*。
+3.  **解析分片并定位物理地址**：
+    对于大对象，其物理地址映射（Extent Map）可能被切分为多个 **Shard**（分片）。
+    *   BlueStore 首先从 Onode 中读取 `extent_map_shards` 数组，确定目标偏移量位于哪个 Shard 中。
+    *   根据 Shard 信息，在内存中（或缓存未命中时回查 KVDB）加载对应的 Shard 数据。
+    *   从 Shard 中解析出最终的 **Extent** 列表，提取物理地址（如 `LBA=5000, Length=4MB`）。
 
-4.  **返回数据**：
+4.  **直接物理读取**：
+    BlueStore 拿到物理 LBA 后，**完全绕过文件系统逻辑**，直接向底层磁盘发起 I/O 读取指令。
+
+5.  **返回数据**：
     将读到的数据返回给前端应用。
 
 **优势**：
