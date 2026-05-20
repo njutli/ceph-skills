@@ -9,7 +9,7 @@
 
 ### 示例一：查看具体映射列表（微观验证）
 **命令**：
-`crushtool -i mycrushmap --test --min-x 0 --max-x 9 --num-rep 3 --ruleset 0 --showMappings`
+`crushtool -i mycrushmap --test --min-x 0 --max-x 9 --num-rep 3 --ruleset 0 --show_mappings`
 
 #### 输入参数解析
 * **`-i mycrushmap`**: 输入的 CRUSH Map 文件。
@@ -17,7 +17,7 @@
 * **`--min-x 0 --max-x 9`**: **输入值范围**。`x` 代表 PG ID 或 Object ID。这里模拟了 **10 个 PG** (从 0 到 9)。
 * **`--num-rep 3`**: 指定副本数量为 3（即要求每个 PG 选出 3 个 OSD）。
 * **`--ruleset 0`**: 指定使用的规则编号为 0。
-* **`--showMappings`**: **输出模式**。要求列出每个 `x` 具体落在哪些设备上。
+* **`--show_mappings`**: **输出模式**。要求列出每个 `x` 具体落在哪些设备上。
 
 #### 输出结果解析
 ```text
@@ -34,11 +34,12 @@ CRUSH rule 0 x 1 [15,7,21]
 
 ### 示例二：查看宏观统计分布（宏观均衡）
 **命令**：
-`crushtool -i mycrushmap --test --min-x 0 --max-x 100000 --num-rep 3 --ruleset 0 --show/utilization`
+`crushtool -i mycrushmap --test --min-x 0 --max-x 100000 --num-rep 3 --ruleset 0 --show_utilization`
 
 #### 输入参数解析
 * **`--max-x 100000`**: **关键变化**。模拟范围扩大到了 **10 万**。这是为了获得**统计学上的准确性**。样本越小，随机性干扰越大；样本越大，越能反映真实的整体数据分布情况。
-* **`--show/utilization`**: **输出模式**。要求输出统计摘要，而不是罗列 10 万条记录。
+* **`--show_utilization`**: **输出模式**。要求输出统计摘要，而不是罗列 10 万条记录。
+* **`--show_utilization_all`**: （补充）显示所有设备（包括权重为 0 或未选中的设备）的利用率统计，便于排查无数据 OSD 的原因。
 
 #### 输出结果解析
 ```text
