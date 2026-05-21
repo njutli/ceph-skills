@@ -401,28 +401,153 @@ cd /home/i_ingfeng/ceph/build
 
 ### 5.3 验证集群
 
+#### 5.3.1 状态查询命令与参数
 ```bash
-# 设置环境变量
+# 设置环境变量 (vstart.sh 通常会自动处理，手动运行需指定配置)
 export PATH=$PWD/bin:$PATH
 export CEPH_CONF=$PWD/ceph.conf
 
 # 查看集群状态
 ceph -c ceph.conf -k keyring -s
-
-# 预期输出:
-#   cluster:
-#     id:     xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-#     health: HEALTH_OK (或 HEALTH_WARN)
-#   services:
-#     mon: 3 daemons, quorum a,b,c
-#     mgr: x(active)
-#     osd: 3 osds: 3 up, 3 in
-#   data:
-#     pools:   1 pools, 1 pgs
-#     objects: 0 objects, 0 B
-#     usage:   3 OSDs used, X GiB used
-#     pg_state:  1 active+clean
 ```
+
+**参数详解：**
+| 参数 | 含义 | 说明 |
+|------|------|------|
+| `-c ceph.conf` | **Config file** | 指定配置文件路径。vstart.sh 会在 `build/` 目录下生成此文件，包含 MON 地址、密钥路径等 |
+| `-k keyring` | **Keyring** | 指定密钥环文件。用于客户端身份验证，`vstart.sh` 默认生成包含 admin 权限的 keyring |
+| `-s` | **Status** | 显示集群的简要状态摘要 (health, services, data 等)。等价于 `ceph status` |
+
+**⚠️ 为什么必须显式指定 `-c` 和 `-k`？**
+虽然直接输入 `ceph status` 有时也能运行（因为 Ceph 会尝试在当前目录查找 `ceph.conf`），但显式指定参数是**标准且必要**的做法：
+1.  **跨目录执行**：如果不在 `build/` 目录下运行，Ceph 找不到配置文件会报错。
+2.  **多集群管理**：当同时连接多个集群时，必须通过 `-c` 区分不同的配置文件。
+3.  **权限隔离**：`ceph.conf` 内部通常硬编码了默认的 keyring 路径。使用 `-k` 可以在不修改配置文件的情况下，临时切换用户身份（例如测试普通用户权限）。
+
+**典型输出及逐行解读 (初次启动：HEALTH_WARN)：**
+
+```text
+*** DEVELOPER MODE: setting PATH, PYTHONPATH and LD_LIBRARY_PATH ***
+2026-05-21T21:41:52.312+0800 7aa76eb9d6c0 -1 WARNING: all dangerous and experimental features are enabled.
+  cluster:
+    id:     d8df4e2b-f52b-40c0-bf2f-4ae624fea125
+    health: HEALTH_WARN
+            Module 'rbd_support' has failed dependency: No module named 'dateutil'
+
+  services:
+    mon: 3 daemons, quorum a,b,c (age 103s) [leader: a]
+    mgr: x(active, since 105s)
+    mds: 1/1 daemons up, 2 standby
+    osd: 3 osds: 3 up (since 96s), 3 in (since 102s)
+
+  data:
+    volumes: 1/1 healthy
+    pools:   3 pools, 145 pgs
+    objects: 24 objects, 579 KiB
+    usage:   2.1 MiB used, 3.0 GiB / 3 GiB avail
+    pgs:     144 active+clean
+             1   active+clean+scrubbing
+```
+
+**字段详解：**
+- `DEVELOPER MODE`: vstart 自动注入了开发环境所需的 Python 路径和库路径。
+- `WARNING: experimental features`: 开发模式默认开启所有实验性特性，生产环境需关闭。
+- `health: HEALTH_WARN`: 集群健康状态为警告。此处是因为开发环境缺少 Python 的 `dateutil` 模块，不影响核心数据流验证。
+- `mon: 3 daemons, quorum a,b,c`: 3 个 MON 守护进程正常运行，已形成 Paxos 法定人数 (Quorum)，`a` 为当前 Leader。
+- `mgr: x(active)`: MGR 守护进程 `x` 处于活跃状态，负责集群管理和指标收集。
+- `mds: 1/1 up, 2 standby`: 1 个 MDS 活跃 (处理 CephFS 元数据)，2 个处于热备状态。
+- `osd: 3 up, 3 in`: 3 个 OSD 均在线 (`up`) 且已加入集群映射 (`in`)，可接收数据。
+- `pools: 3 pools`: 默认创建的逻辑存储池 (通常包含 `device_health_metrics` 及 CephFS 相关池)。
+- `objects: 24 objects`: 当前集群中存储的对象总数 (主要是元数据)。
+- `usage: 2.1 MiB used`: MemStore 模式下显示的是**内存占用量**。若使用 BlueStore，此处将显示磁盘空间使用量。
+- `pgs: 144 active+clean`: 所有归置组均处于 `active+clean` 状态，表示数据完整且可正常读写。`scrubbing` 表示后台正在进行数据一致性校验。
+
+#### 5.3.2 修复依赖后重启状态 (HEALTH_OK)
+安装缺失的 `python3-dateutil` 并重启集群后，状态恢复正常：
+
+```text
+  cluster:
+    id:     fd85883e-fe90-4acb-b5cd-fd146f0a1760
+    health: HEALTH_OK
+
+  services:
+    mon: 3 daemons, quorum a,b,c (age 31s) [leader: a]
+    mgr: x(active, since 30s)
+    mds: 1/1 daemons up, 2 standby
+    osd: 3 osds: 3 up (since 21s), 3 in (since 27s)
+
+  data:
+    volumes: 1/1 healthy
+    pools:   3 pools, 3 pgs
+    objects: 24 objects, 579 KiB
+    usage:   1.8 MiB used, 3.0 GiB / 3 GiB avail
+    pgs:     3 active+clean
+
+  io:
+    client:   1.8 KiB/s wr, 0 op/s rd, 5 op/s wr
+```
+
+**变化说明：**
+- `health: HEALTH_OK`: 依赖问题解决，警告消失，集群完全健康。
+- `pools: 3 pgs`: 重启后 PG 数量恢复为初始状态（每个 Pool 默认 1 个 PG）。
+- `io`: 新增了 IO 统计段，显示当前客户端的读写吞吐量和操作数（OP/s）。此处显示有少量写入操作，通常是 MGR 或 MDS 的后台心跳/元数据更新。
+
+#### 5.3.4 启动后预存对象分析 (未写入数据时的对象来源)
+
+即使集群启动后用户未进行任何数据写入，`ceph -s` 仍会显示存在少量对象（如 24 个）。这些对象是 **CephFS 文件系统的“骨架”元数据**，由 MDS 在启动初始化时自动创建。
+
+**1. 查询步骤与方法**
+
+*   **步骤一：列出集群中的所有 Pool**
+    ```bash
+    ceph -c ceph.conf -k keyring osd pool ls
+    ```
+    **结果：**
+    ```text
+    .mgr
+    cephfs.a.meta
+    cephfs.a.data
+    ```
+    *解读：集群包含 MGR 内部池、CephFS 元数据池 (`meta`) 和 CephFS 数据池 (`data`)。*
+
+*   **步骤二：查看各 Pool 中的对象**
+    ```bash
+    rados -c ceph.conf -k keyring -p cephfs.a.meta ls
+    ```
+    **结果：**
+    ```text
+    1.00000000.inode
+    mds0_sessionmap
+    mds_snaptable
+    mds0_inotable
+    ... (其他元数据对象)
+    ```
+    *解读：所有预存对象均位于 `cephfs.a.meta` 池中，`cephfs.a.data` 池为空（因为无用户数据）。*
+
+*   **步骤三：查看特定对象的内容与映射**
+    ```bash
+    # 查看根目录 Inode 对象内容 (二进制)
+    rados -c ceph.conf -k keyring -p cephfs.a.meta get 1.00000000.inode - | hexdump -C | head
+    
+    # 查看该对象存储在哪些 OSD 上
+    ceph -c ceph.conf -k keyring osd map cephfs.a.meta 1.00000000.inode
+    ```
+    **映射结果：**
+    ```text
+    osdmap e51 pool 'cephfs.a.meta' (2) object '1.00000000.inode' -> pg 2.232c0e14 (2.4) -> up ([1,0,2], p1) acting ([1,0,2], p1)
+    ```
+
+**2. 核心对象解读**
+
+| 对象名称 | 含义 | 作用 |
+|----------|------|------|
+| `1.00000000.inode` | **根目录 Inode** | 对应 CephFS 的 `/` 根目录，包含权限、时间戳等基础信息。没有它，文件系统无法挂载。 |
+| `mds0_sessionmap` | **会话映射表** | 记录当前连接到 MDS 的客户端会话信息。初始为空，客户端挂载后会有记录。 |
+| `mds_snaptable` | **快照表** | 记录文件系统的全局快照信息。 |
+| `mds0_inotable` | **Inode 分配表** | MDS 用于分配新文件/目录的唯一 Inode 编号，防止冲突。 |
+
+**3. 结论**
+这些对象是 CephFS 正常运行所必需的系统级元数据。当你后续挂载文件系统或创建文件时，Ceph 会在 `cephfs.a.meta` 中新增 Inode 对象，并在 `cephfs.a.data` 中新增实际的数据对象。
 
 ### 5.4 基本数据流验证
 
@@ -478,15 +603,36 @@ ceph -c ceph.conf -k keyring -w
 
 ### 5.7 停止集群
 
-```bash
-# 方法1: 使用 stop.sh
-../src/stop.sh
+**重要提醒**：使用 `--memstore` 启动的集群，停止后所有数据（内存中）将**永久丢失**。
 
-# 方法2: 手动杀进程
+#### 方法 1：使用官方脚本 (推荐)
+`stop.sh` 会尝试优雅地停止所有相关守护进程（MON, OSD, MDS, MGR 等）。
+```bash
+# 在 build 目录下执行
+../src/stop.sh
+```
+
+#### 方法 2：强制结束进程
+如果 `stop.sh` 无响应或找不到，可以手动杀进程。
+```bash
+# 杀掉所有 ceph 相关进程
 pkill -f ceph-mon
 pkill -f ceph-osd
+pkill -f ceph-mds
 pkill -f ceph-mgr
+pkill -f ceph-fuse
+
+# 验证是否还有残留
+pgrep -a ceph
 ```
+
+#### 方法 3：清理环境 (可选)
+如果你需要彻底重置环境（例如修改了配置需要重新初始化），可以删除 `dev` 目录：
+```bash
+# 警告：这将删除所有集群数据和配置文件
+rm -rf dev/ out/ asok/ ceph.conf keyring
+```
+之后再次运行 `vstart.sh` 时会重新初始化集群。
 
 ### 5.8 CephFS 客户端流程 (方案A)
 
