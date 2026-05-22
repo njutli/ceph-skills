@@ -854,17 +854,22 @@ sudo apt install -y cephadm
 ### 6.2 Bootstrap 单节点集群
 
 ```bash
-# 获取 WSL2 IP
-ip addr show eth0 | grep 'inet ' | awk '{print $2}' | cut -d/ -f1
-# 假设输出: 172.24.80.10
+# 获取 WSL2 IP (通用方式，不依赖接口名)
+HOST_IP=$(hostname -I | awk '{print $1}')
+echo $HOST_IP   # 例如: 192.168.1.162
 
 # Bootstrap (单节点模式)
-sudo cephadm bootstrap --mon-ip 172.24.80.10 --single-host-defaults
+sudo cephadm bootstrap --mon-ip $HOST_IP --single-host-defaults
 
 # --single-host-defaults 自动设置:
 #   osd_crush_chooseleaf_type = 0  (允许同主机多 OSD)
 #   osd_pool_default_size = 2      (默认 2 副本)
-#   mgr_standby_modules = False    (禁用 standby 模块)
+
+# 停止 / 启动 / 销毁集群:
+#   临时停止: sudo systemctl stop ceph.target
+#   临时启动: sudo systemctl start ceph.target
+#   彻底销毁: sudo cephadm rm-cluster --fsid <FSID> --force
+#            (FSID 可通过 cephadm ls 或 ceph status 查看)
 ```
 
 ### 6.3 添加 OSD
@@ -876,14 +881,19 @@ for i in 0 1 2; do
     sudo losetup /dev/loop${i} /var/local/osd${i}.img
 done
 
-# 使用 loop 设备创建 OSD
+# 使用 loop 设备创建 OSD (块设备模式: 以 /dev/ 开头 → 裸盘 bluestore)
 sudo ceph orch daemon add osd /dev/loop0:/dev/loop1:/dev/loop2
 
-# 或使用目录模式 (更简单，但不推荐生产)
+# 或使用目录模式 (非 /dev/ 路径 → 目录模拟 bluestore，不推荐生产)
 sudo mkdir -p /var/local/osd{0,1,2}
-sudo ceph orch daemon add osd node1:/var/local/osd0
-sudo ceph orch daemon add osd node1:/var/local/osd1
-sudo ceph orch daemon add osd node1:/var/local/osd2
+HOST=$(hostname)
+sudo ceph orch daemon add osd $HOST:/var/local/osd0
+sudo ceph orch daemon add osd $HOST:/var/local/osd1
+sudo ceph orch daemon add osd $HOST:/var/local/osd2
+
+# cephadm 区分方式:
+#   参数以 /dev/ 开头 → 块设备 OSD (独占整个磁盘)
+#   参数以路径开头    → 目录 OSD (在该目录下创建文件模拟磁盘)
 ```
 
 ### 6.4 验证
