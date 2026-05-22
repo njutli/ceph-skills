@@ -1,0 +1,577 @@
+[22224.427468] ceph:  ceph_parse_mount_param fs_parse 'source' token 12
+[22224.427472] ceph:  ceph_parse_source '127.0.0.1:40503:/'
+[22224.427473] ceph:  device name '127.0.0.1:40503'
+[22224.427474] ceph:  server path '/'
+[22224.427474] ceph:  trying new device syntax
+[22224.427474] ceph:  separator '=' missing in source
+[22224.427475] ceph:  trying old device syntax
+[22224.427478] ceph:  ceph_parse_mount_param fs_parse 'mds_namespace' token 10
+[22224.427483] ceph:  ceph_get_tree
+[22224.427898] ceph:  set_super 0000000074c64218
+[22224.427909] ceph:  get_sb using new client 00000000fbf4a880
+[22224.427992] ceph:  mount start 00000000fbf4a880
+[22224.429310] libceph: mon0 (2)127.0.0.1:40503 session established
+[22224.430178] ceph:  handle_fsmap epoch 10
+[22224.430242] libceph: client4617 fsid e20c1068-04d5-4745-a133-9853db2f5e8a
+[22224.430256] ceph:  mount opening path ''
+[22224.430257] ceph:  ceph_fs_debugfs_init
+[22224.430274] ceph:  open_root_inode opening ''
+[22224.430293] ceph:  do_request on 00000000633789f0
+[22224.430294] ceph:  submit_request on 00000000633789f0 for inode 0000000000000000
+[22224.430304] ceph:  reserve caps ctx=00000000804d0c6e need=2
+[22224.430318] ceph:  reserve caps ctx=00000000804d0c6e 2 = 0 used + 2 resv + 0 avail
+[22224.430319] ceph:  __register_request 00000000633789f0 tid 1
+[22224.430321] ceph:  do_request no mdsmap, waiting for map
+[22224.430330] ceph:  do_request waiting
+[22224.430554] ceph:  handle_map epoch 9 len 1210
+[22224.430559] ceph:  mdsmap_decode 1/1 4230 mds0.8 (2)127.0.0.1:6828 up:active
+[22224.430560] ceph:  mdsmap_decode m_enabled: 1, m_damaged: 0, m_num_laggy: 0
+[22224.430561] ceph:  mdsmap_decode success epoch 9
+[22224.430561] ceph:  check_new_map new 9 old 0
+[22224.430563] ceph:   wake request 00000000633789f0 tid 1
+[22224.430564] ceph:  __choose_mds 0000000000000000 is_hash=0 (0x0) mode 0
+[22224.430565] ceph:  __choose_mds chose random mds0
+[22224.430567] ceph:  register_session: realloc to 1
+[22224.430567] ceph:  register_session: mds0
+[22224.430568] ceph:  do_request mds0 session 000000009680d5d3 state new
+[22224.430569] ceph:  open_session to mds0 (up:active)
+[22224.435183] ceph:  handle_session mds0 open 000000009680d5d3 state opening seq 0
+[22224.435187] ceph:  renewed_caps mds0 ttl now 4300121668, was fresh, now stale
+[22224.435188] ceph:   wake request 00000000633789f0 tid 1
+[22224.435189] ceph:  __choose_mds using resend_mds mds0
+[22224.435190] ceph:  do_request mds0 session 000000009680d5d3 state open
+[22224.435191] ceph:  __prepare_send_request 00000000633789f0 tid 1 getattr (attempt 1)
+[22224.435192] ceph:   path 
+[22224.435193] ceph:   r_parent = 0000000000000000
+[22224.435723] ceph:  handle_reply 00000000633789f0
+[22224.435726] ceph:  __unregister_request 00000000633789f0 tid 1
+[22224.435727] ceph:  handle_reply tid 1 result 0
+[22224.435741] ceph:  alloc_inode 000000006b5fd166
+[22224.435749] ceph:  get_inode on 1=1.fffffffffffffffe got 000000006b5fd166 new 1
+[22224.435751] ceph:  ceph_update_snap_trace deletion=0
+[22224.435752] ceph:  ceph_create_snap_realm 1 0000000099df5954
+[22224.435753] ceph:  ceph_update_snap_trace updating 1 0000000099df5954 0 -> 1
+[22224.435754] ceph:  done with 1 0000000099df5954, rebuild_snapcs=1, 0000000062ce1dbb 0000000062ce1dbb
+[22224.435755] ceph:  build_snap_context 1 0000000099df5954: 00000000d8b781fd seq 1 (0 snaps)
+[22224.435756] ceph:  rebuild_snap_realms 1 0000000099df5954, succeeded
+[22224.435756] ceph:  queue_realm_cap_snaps 0000000099df5954 1 inode
+[22224.435757] ceph:  queue_realm_cap_snaps 0000000099df5954 1 done
+[22224.435758] ceph:  fill_trace 00000000633789f0 is_dentry 0 is_target 1
+[22224.435759] ceph:  ceph_fill_inode 000000006b5fd166 ino 1.fffffffffffffffe v 18 had 0
+[22224.435760] ceph:  get_cap ctx=00000000804d0c6e (2) 2 = 0 used + 2 resv + 0 avail
+[22224.435769] ceph:  000000006b5fd166 mode 040755 uid.gid 1000.1000
+[22224.435771] ceph:  ceph_fill_file_size truncate_size 0 -> 18446744073709551615, encrypted 0
+[22224.435773] ceph:  add_cap 000000006b5fd166 mds0 cap 8 pAsLsXs seq 1
+[22224.435773] ceph:  __lookup_snap_realm 1 0000000099df5954
+[22224.435780] ceph:  __cap_is_valid 000000006b5fd166 cap 0000000091fa6ff9 issued - but STALE (gen 0 vs 1)
+[22224.435782] ceph:  add_cap inode 000000006b5fd166 (1.fffffffffffffffe) cap 0000000091fa6ff9 pAsLsXs now pAsLsXs seq 1 mds0
+[22224.435784] ceph:  fill_trace done err=0
+[22224.435784] ceph:  unreserve caps ctx=00000000804d0c6e count=1
+[22224.435785] ceph:  __ceph_unreserve_caps: caps 2 = 1 used + 0 resv + 1 avail
+[22224.435799] ceph:  do_request waited, got 0
+[22224.435801] ceph:  do_request 00000000633789f0 done, result 0
+[22224.435802] ceph:  open_root_inode success
+[22224.435830] ceph:  open_root_inode success, root dentry is 000000006e08304f
+[22224.435832] ceph:  mount success
+[22224.435833] ceph:  root 000000006e08304f inode 000000006b5fd166 ino 1.fffffffffffffffe
+[22224.435882] ceph:  destroy_mount_options 0000000000000000
+[22224.455169] ceph:  do_getattr inode 000000006b5fd166 mask As mode 040755
+[22224.455173] ceph:  __ceph_caps_issued_mask ino 0x1 cap 0000000091fa6ff9 issued pAsLsXs (mask As)
+[22224.455174] ceph:  __touch_cap 000000006b5fd166 cap 0000000091fa6ff9 mds0
+[22224.455176] ceph:  getxattr 000000006b5fd166 name 'system.posix_acl_access' ver=1 index_ver=0
+[22224.455177] ceph:  __ceph_caps_issued_mask ino 0x1 cap 0000000091fa6ff9 issued pAsLsXs (mask Xs)
+[22224.455177] ceph:  __touch_cap 000000006b5fd166 cap 0000000091fa6ff9 mds0
+[22224.455198] ceph:  __build_xattrs() len=0
+[22224.455199] ceph:  __ceph_destroy_xattrs p=0000000000000000
+[22224.455199] ceph:  __get_xattr system.posix_acl_access: not found
+[22224.455200] ceph:  __ceph_caps_issued_mask ino 0x1 cap 0000000091fa6ff9 issued pAsLsXs (mask Xs)
+[22224.455212] ceph:  do_getattr inode 000000006b5fd166 mask As mode 040755
+[22224.455213] ceph:  __ceph_caps_issued_mask ino 0x1 cap 0000000091fa6ff9 issued pAsLsXs (mask As)
+[22224.455214] ceph:  __touch_cap 000000006b5fd166 cap 0000000091fa6ff9 mds0
+[22224.455216] ceph:  atomic_open 000000006b5fd166 dentry 000000001fc8d320 'test_trace.txt' unhashed flags 33345 mode 0100666
+[22224.455224] ceph:  alloc_inode 0000000096c34c41
+[22224.455225] ceph:  getxattr 000000006b5fd166 name 'system.posix_acl_default' ver=1 index_ver=1
+[22224.455226] ceph:  __ceph_caps_issued_mask ino 0x1 cap 0000000091fa6ff9 issued pAsLsXs (mask Xs)
+[22224.455227] ceph:  __touch_cap 000000006b5fd166 cap 0000000091fa6ff9 mds0
+[22224.455227] ceph:  __build_xattrs() len=0
+[22224.455227] ceph:  __get_xattr system.posix_acl_default: not found
+[22224.455228] ceph:  __ceph_caps_issued_mask ino 0x1 cap 0000000091fa6ff9 issued pAsLsXs (mask Xs)
+[22224.455233] ceph:  unused open flags: 8000
+[22224.455234] ceph:  do_request on 00000000a170d66e
+[22224.455236] ceph:  __cap_delay_requeue 000000006b5fd166 flags 0x0 at 0
+[22224.455236] ceph:  __cap_set_timeouts 000000006b5fd166 14999
+[22224.455237] ceph:  submit_request on 00000000a170d66e for inode 000000006b5fd166
+[22224.455238] ceph:  reserve caps ctx=0000000000a29f81 need=2
+[22224.455239] ceph:  reserve caps ctx=0000000000a29f81 3 = 1 used + 2 resv + 0 avail
+[22224.455240] ceph:  __register_request 00000000a170d66e tid 2
+[22224.455242] ceph:  __choose_mds 000000006b5fd166 is_hash=1 (0xf6647c0e) mode 2
+[22224.455243] ceph:  choose_frag(f6647c0e) = 0
+[22224.455251] ceph:  __choose_mds 000000006b5fd166 1.fffffffffffffffe mds0 (auth cap 0000000091fa6ff9)
+[22224.455253] ceph:  do_request mds0 session 000000009680d5d3 state open
+[22224.455254] ceph:  __prepare_send_request 00000000a170d66e tid 2 create (attempt 1)
+[22224.455256] ceph:   dentry 000000001fc8d320 1/test_trace.txt
+[22224.455272] ceph:  encode_inode_release 000000006b5fd166 mds0 used|dirty p drop AxXxFs unless Fx
+[22224.455273] ceph:  encode_inode_release 000000006b5fd166 cap 0000000091fa6ff9 pAsLsXs (noop)
+[22224.455274] ceph:   r_parent = 000000006b5fd166
+[22224.455278] ceph:  do_request waiting
+[22224.459295] ceph:  handle_reply 00000000a170d66e
+[22224.459298] ceph:  __unregister_request 00000000a170d66e tid 2
+[22224.459300] ceph:  handle_reply tid 2 result 0
+[22224.459302] ceph:  got 0 sets of delegated inodes
+[22224.459328] ceph:  get_inode on 1099511627777=10000000001.fffffffffffffffe got 0000000096c34c41 new 1
+[22224.459329] ceph:  ceph_update_snap_trace deletion=0
+[22224.459330] ceph:  __lookup_snap_realm 1 0000000099df5954
+[22224.459331] ceph:  ceph_update_snap_trace 1 0000000099df5954 seq 1 unchanged
+[22224.459332] ceph:  done with 1 0000000099df5954, rebuild_snapcs=0, 00000000545c8595 00000000545c8595
+[22224.459333] ceph:  fill_trace 00000000a170d66e is_dentry 1 is_target 1
+[22224.459334] ceph:  ceph_fill_inode 000000006b5fd166 ino 1.fffffffffffffffe v 20 had 18
+[22224.459335] ceph:  get_cap ctx=0000000000a29f81 (2) 3 = 1 used + 2 resv + 0 avail
+[22224.459337] ceph:  __ceph_caps_issued 000000006b5fd166 cap 0000000091fa6ff9 issued pAsLsXs
+[22224.459338] ceph:  000000006b5fd166 mode 040755 uid.gid 1000.1000
+[22224.459339] ceph:  ceph_fill_file_size truncate_size -1 -> 18446744073709551615, encrypted 0
+[22224.459340] ceph:  add_cap 000000006b5fd166 mds0 cap 8 pAsLsXs seq 2
+[22224.459341] ceph:  __ceph_caps_issued 000000006b5fd166 cap 0000000091fa6ff9 issued pAsLsXs
+[22224.459342] ceph:  add_cap inode 000000006b5fd166 (1.fffffffffffffffe) cap 0000000091fa6ff9 pAsLsXs now pAsLsXs seq 2 mds0
+[22224.459343] ceph:  choose_frag(0) = 0
+[22224.459344] ceph:  put_cap 000000004562469c 3 = 2 used + 1 resv + 0 avail
+[22224.459345] ceph:  ceph_fill_inode 0000000096c34c41 ino 10000000001.fffffffffffffffe v 36 had 0
+[22224.459354] ceph:  get_cap ctx=0000000000a29f81 (1) 3 = 1 used + 1 resv + 1 avail
+[22224.459355] ceph:  0000000096c34c41 mode 0100644 uid.gid 0.0
+[22224.459356] ceph:  size 0 -> 0
+[22224.459356] ceph:  ceph_fill_file_size truncate_seq 0 -> 1
+[22224.459357] ceph:  ceph_fill_file_size truncate_size 0 -> 18446744073709551615, encrypted 0
+[22224.459357] ceph:  max_size 0 -> 4194304
+[22224.459358] ceph:  add_cap 0000000096c34c41 mds0 cap 1 pAsxLsXsxFsxcrwb seq 1
+[22224.459359] ceph:  __lookup_snap_realm 1 0000000099df5954
+[22224.459359] ceph:  __cap_is_valid 0000000096c34c41 cap 000000004562469c issued - but STALE (gen 0 vs 1)
+[22224.459360] ceph:   issued pAsxLsXsxFsxcrwb, mds wanted pAsxXsxFxwb, actual -, queueing
+[22224.459361] ceph:  __cap_delay_requeue 0000000096c34c41 flags 0x0 at 0
+[22224.459366] ceph:  __cap_set_timeouts 0000000096c34c41 15019
+[22224.459366] ceph:  add_cap inode 0000000096c34c41 (10000000001.fffffffffffffffe) cap 000000004562469c pAsxLsXsxFsxcrwb now pAsxLsXsxFsxcrwb seq 1 mds0
+[22224.459369] ceph:  dn 000000001fc8d320 attached to 0000000096c34c41 ino 10000000001.fffffffffffffffe
+[22224.459370] ceph:  update_dentry_lease 000000001fc8d320 duration 30000 ms ttl 4300114173
+[22224.459371] ceph:  dentry_lease_touch 000000007691cbf4 000000001fc8d320 'test_trace.txt'
+[22224.459373] ceph:   final dn 000000001fc8d320
+[22224.459380] ceph:  fill_trace done err=0
+[22224.459400] ceph:  do_request waited, got 0
+[22224.459402] ceph:  do_request 00000000a170d66e done, result 0
+[22224.459404] ceph:  atomic_open finish_open on dn 0000000000000000
+[22224.459405] ceph:  __ceph_caps_issued 000000006b5fd166 cap 0000000091fa6ff9 issued pAsLsXs
+[22224.459406] ceph:  __ceph_caps_issued_mask ino 0x10000000001 cap 000000004562469c issued pAsxLsXsxFsxcrwb (mask Xs)
+[22224.459407] ceph:  __ceph_caps_issued_mask ino 0x10000000001 cap 000000004562469c issued pAsxLsXsxFsxcrwb (mask Xs)
+[22224.459409] ceph:  open inode 0000000096c34c41 ino 10000000001.fffffffffffffffe file 00000000cd7a597b flags 33281 (33345)
+[22224.459411] ceph:  __ceph_caps_issued 0000000096c34c41 cap 000000004562469c issued pAsxLsXsxFsxcrwb
+[22224.459411] ceph:  open 0000000096c34c41 fmode 2 want pAsxXsxFxwb issued pAsxLsXsxFsxcrwb using existing
+[22224.459412] ceph:  ceph_init_file_info 0000000096c34c41 00000000cd7a597b 0100644 (regular)
+[22224.459418] ceph:  put_cap_refs 000000006b5fd166 had p
+[22224.459419] ceph:  atomic_open result=0
+[22224.459420] ceph:  do_getattr inode 0000000096c34c41 mask As mode 0100644
+[22224.459421] ceph:  __ceph_caps_issued_mask ino 0x10000000001 cap 000000004562469c issued pAsxLsXsxFsxcrwb (mask As)
+[22224.459422] ceph:  __touch_cap 0000000096c34c41 cap 000000004562469c mds0
+[22224.459434] ceph:  getxattr 0000000096c34c41 name 'security.capability' ver=1 index_ver=0
+[22224.459435] ceph:  __ceph_caps_issued_mask ino 0x10000000001 cap 000000004562469c issued pAsxLsXsxFsxcrwb (mask Xs)
+[22224.459436] ceph:  __touch_cap 0000000096c34c41 cap 000000004562469c mds0
+[22224.459436] ceph:  __build_xattrs() len=0
+[22224.459437] ceph:  __ceph_destroy_xattrs p=0000000000000000
+[22224.459437] ceph:  __get_xattr security.capability: not found
+[22224.459438] ceph:  aio_write 0000000096c34c41 10000000001.fffffffffffffffe 0~28 getting caps. i_size 0
+[22224.459439] ceph:  __ceph_pool_perm_get pool 5 no perm cached
+[22224.463211] ceph:  __ceph_pool_perm_get pool 5 result = 3
+[22224.463215] ceph:  get_cap_refs 0000000096c34c41 need Fw want Fb
+[22224.463216] ceph:  __ceph_caps_issued 0000000096c34c41 cap 000000004562469c issued pAsxLsXsxFsxcrwb
+[22224.463217] ceph:  get_cap_refs 0000000096c34c41 have pAsxLsXsxFsxcrwb but not Fb (revoking -)
+[22224.463219] ceph:  ceph_take_cap_refs 0000000096c34c41 wb 0 -> 1 (?)
+[22224.463220] ceph:  get_cap_refs 0000000096c34c41 ret 1 got Fwb
+[22224.463222] ceph:  aio_write 0000000096c34c41 10000000001.fffffffffffffffe 0~28 got cap refs on Fwb
+[22224.463228] ceph:  write_end file 00000000cd7a597b inode 0000000096c34c41 folio 000000000828fb14 0~28 (28)
+[22224.463230] ceph:  set_size 0000000096c34c41 0 -> 28
+[22224.463247] ceph:  0000000096c34c41 dirty_folio 000000000828fb14 idx 0 head 0/0 -> 1/1 snapc 00000000d8b781fd seq 1 (0 snaps)
+[22224.463250] ceph:  __mark_dirty_caps 0000000096c34c41 Fw dirty - -> Fw
+[22224.463251] ceph:   inode 0000000096c34c41 now dirty snapc 00000000d8b781fd auth cap 000000004562469c
+[22224.463252] ceph:  __cap_delay_requeue 0000000096c34c41 flags 0x38 at 4300121693
+[22224.463253] ceph:  __cap_set_timeouts 0000000096c34c41 14997
+[22224.463254] ceph:  aio_write 0000000096c34c41 10000000001.fffffffffffffffe 0~28  dropping cap refs on Fwb
+[22224.463255] ceph:  put_cap_refs 0000000096c34c41 wb 1 -> 0 (?)
+[22224.463255] ceph:  put_cap_refs 0000000096c34c41 had Fwb last put
+[22224.463256] ceph:  __ceph_caps_issued 0000000096c34c41 cap 000000004562469c issued pAsxLsXsxFsxcrwb
+[22224.463257] ceph:  check_caps 10000000001.fffffffffffffffe file_want pAsxXsxFxwb used Fcb dirty Fw flushing - issued pAsxLsXsxFsxcrwb revoking - retain pAsxLsxXsxFsxcrwbl 
+[22224.463259] ceph:   mds0 cap 000000004562469c used Fcb issued pAsxLsXsxFsxcrwb implemented pAsxLsXsxFsxcrwb revoking -
+[22224.463268] ceph:  release inode 0000000096c34c41 regular file 00000000cd7a597b
+[22224.479890] ceph:  do_getattr inode 000000006b5fd166 mask As mode 040755
+[22224.479895] ceph:  __ceph_caps_issued_mask ino 0x1 cap 0000000091fa6ff9 issued pAsLsXs (mask As)
+[22224.479918] ceph:  __touch_cap 000000006b5fd166 cap 0000000091fa6ff9 mds0
+[22224.479921] ceph:  d_revalidate 000000001fc8d320 'test_trace.txt' inode 0000000096c34c41 offset 0x0 nokey 0
+[22224.479923] ceph:  dentry_lease_is_valid - dentry 000000001fc8d320 = 1
+[22224.479924] ceph:  d_revalidate 000000001fc8d320 valid
+[22224.479925] ceph:  do_getattr inode 0000000096c34c41 mask As mode 0100644
+[22224.479926] ceph:  __ceph_caps_issued_mask ino 0x10000000001 cap 000000004562469c issued pAsxLsXsxFsxcrwb (mask As)
+[22224.479927] ceph:  __touch_cap 0000000096c34c41 cap 000000004562469c mds0
+[22224.479928] ceph:  open inode 0000000096c34c41 ino 10000000001.fffffffffffffffe file 000000008c6539d6 flags 32768 (32768)
+[22224.479930] ceph:  __ceph_caps_issued 0000000096c34c41 cap 000000004562469c issued pAsxLsXsxFsxcrwb
+[22224.479930] ceph:  open 0000000096c34c41 fmode 1 want pFscr issued pAsxLsXsxFsxcrwb using existing
+[22224.479932] ceph:  ceph_init_file_info 0000000096c34c41 000000008c6539d6 0100644 (regular)
+[22224.479935] ceph:  do_getattr inode 0000000096c34c41 mask AsLsXsFs mode 0100644
+[22224.479936] ceph:  __ceph_caps_issued_mask ino 0x10000000001 cap 000000004562469c issued pAsxLsXsxFsxcrwb (mask AsLsXsFs)
+[22224.479937] ceph:  __touch_cap 0000000096c34c41 cap 000000004562469c mds0
+[22224.479943] ceph:  aio_read 0000000096c34c41 10000000001.fffffffffffffffe 0~4194304 trying to get caps on 0000000096c34c41
+[22224.479945] ceph:  get_cap_refs 0000000096c34c41 need Fr want Fc
+[22224.479946] ceph:  __ceph_caps_issued 0000000096c34c41 cap 000000004562469c issued pAsxLsXsxFsxcrwb
+[22224.479946] ceph:  get_cap_refs 0000000096c34c41 have pAsxLsXsxFsxcrwb but not Fc (revoking -)
+[22224.479947] ceph:  get_cap_refs 0000000096c34c41 ret 1 got Fcr
+[22224.479948] ceph:  aio_read 0000000096c34c41 10000000001.fffffffffffffffe 0~4194304 got cap refs on Fcr
+[22224.479950] ceph:  aio_read 0000000096c34c41 10000000001.fffffffffffffffe dropping cap refs on Fcr = 28
+[22224.479952] ceph:  put_cap_refs 0000000096c34c41 had Fcr last
+[22224.479953] ceph:  __ceph_caps_issued 0000000096c34c41 cap 000000004562469c issued pAsxLsXsxFsxcrwb
+[22224.479954] ceph:  check_caps 10000000001.fffffffffffffffe file_want pAsxXsxFsxcrwb used Fcb dirty Fw flushing - issued pAsxLsXsxFsxcrwb revoking - retain pAsxLsxXsxFsxcrwbl 
+[22224.479955] ceph:   mds0 cap 000000004562469c used Fcb issued pAsxLsXsxFsxcrwb implemented pAsxLsXsxFsxcrwb revoking -
+[22224.479960] ceph:  aio_read 0000000096c34c41 10000000001.fffffffffffffffe 28~4194304 trying to get caps on 0000000096c34c41
+[22224.479961] ceph:  get_cap_refs 0000000096c34c41 need Fr want Fc
+[22224.479961] ceph:  __ceph_caps_issued 0000000096c34c41 cap 000000004562469c issued pAsxLsXsxFsxcrwb
+[22224.479962] ceph:  get_cap_refs 0000000096c34c41 have pAsxLsXsxFsxcrwb but not Fc (revoking -)
+[22224.479973] ceph:  get_cap_refs 0000000096c34c41 ret 1 got Fcr
+[22224.479974] ceph:  aio_read 0000000096c34c41 10000000001.fffffffffffffffe 28~4194304 got cap refs on Fcr
+[22224.479975] ceph:  aio_read 0000000096c34c41 10000000001.fffffffffffffffe dropping cap refs on Fcr = 0
+[22224.479975] ceph:  put_cap_refs 0000000096c34c41 had Fcr last
+[22224.479976] ceph:  __ceph_caps_issued 0000000096c34c41 cap 000000004562469c issued pAsxLsXsxFsxcrwb
+[22224.479985] ceph:  check_caps 10000000001.fffffffffffffffe file_want pAsxXsxFsxcrwb used Fcb dirty Fw flushing - issued pAsxLsXsxFsxcrwb revoking - retain pAsxLsxXsxFsxcrwbl 
+[22224.479986] ceph:   mds0 cap 000000004562469c used Fcb issued pAsxLsXsxFsxcrwb implemented pAsxLsXsxFsxcrwb revoking -
+[22224.479992] ceph:  release inode 0000000096c34c41 regular file 000000008c6539d6
+[22224.482808] ceph:  do_getattr inode 000000006b5fd166 mask AsFs mode 040755
+[22224.482811] ceph:  __ceph_caps_issued 000000006b5fd166 cap 0000000091fa6ff9 issued pAsLsXs
+[22224.482817] ceph:  do_request on 00000000865dbae1
+[22224.482818] ceph:  submit_request on 00000000865dbae1 for inode 0000000000000000
+[22224.482819] ceph:  reserve caps ctx=000000008dcd44fd need=1
+[22224.482820] ceph:  reserve caps ctx=000000008dcd44fd 3 = 2 used + 1 resv + 0 avail
+[22224.482820] ceph:  __register_request 00000000865dbae1 tid 3
+[22224.482821] ceph:  __choose_mds 000000006b5fd166 is_hash=0 (0x0) mode 0
+[22224.482822] ceph:  __choose_mds 000000006b5fd166 1.fffffffffffffffe mds0 (auth cap 0000000091fa6ff9)
+[22224.482834] ceph:  do_request mds0 session 000000009680d5d3 state open
+[22224.482836] ceph:  __prepare_send_request 00000000865dbae1 tid 3 getattr (attempt 1)
+[22224.482837] ceph:   inode 000000006b5fd166 1.fffffffffffffffe
+[22224.482839] ceph:   r_parent = 0000000000000000
+[22224.482843] ceph:  do_request waiting
+[22224.483660] ceph:  handle_reply 00000000865dbae1
+[22224.483662] ceph:  __unregister_request 00000000865dbae1 tid 3
+[22224.483664] ceph:  handle_reply tid 3 result 0
+[22224.483666] ceph:  get_inode on 1=1.fffffffffffffffe got 000000006b5fd166 new 0
+[22224.483667] ceph:  ceph_update_snap_trace deletion=0
+[22224.483668] ceph:  __lookup_snap_realm 1 0000000099df5954
+[22224.483669] ceph:  ceph_update_snap_trace 1 0000000099df5954 seq 1 unchanged
+[22224.483669] ceph:  done with 1 0000000099df5954, rebuild_snapcs=0, 00000000006dfc6c 00000000006dfc6c
+[22224.483671] ceph:  fill_trace 00000000865dbae1 is_dentry 0 is_target 1
+[22224.483672] ceph:  ceph_fill_inode 000000006b5fd166 ino 1.fffffffffffffffe v 20 had 20
+[22224.483673] ceph:  get_cap ctx=000000008dcd44fd (1) 3 = 2 used + 1 resv + 0 avail
+[22224.483675] ceph:  __ceph_caps_issued 000000006b5fd166 cap 0000000091fa6ff9 issued pAsLsXs
+[22224.483676] ceph:  ceph_fill_file_size truncate_size -1 -> 18446744073709551615, encrypted 0
+[22224.483677] ceph:  add_cap 000000006b5fd166 mds0 cap 8 pAsLsXsFs seq 3
+[22224.483678] ceph:  __ceph_caps_issued 000000006b5fd166 cap 0000000091fa6ff9 issued pAsLsXs
+[22224.483678] ceph:   marking 000000006b5fd166 NOT complete
+[22224.483679] ceph:  add_cap inode 000000006b5fd166 (1.fffffffffffffffe) cap 0000000091fa6ff9 pAsLsXsFs now pAsLsXsFs seq 3 mds0
+[22224.483681] ceph:  put_cap 00000000db6a556b 3 = 3 used + 0 resv + 0 avail
+[22224.483681] ceph:  fill_trace done err=0
+[22224.483697] ceph:  do_request waited, got 0
+[22224.483699] ceph:  do_request 00000000865dbae1 done, result 0
+[22224.483702] ceph:  put_cap_refs 000000006b5fd166 had p
+[22224.483703] ceph:  do_getattr result=0
+[22224.483715] ceph:  getxattr 000000006b5fd166 name 'security.selinux' ver=1 index_ver=1
+[22224.483716] ceph:  __ceph_caps_issued_mask ino 0x1 cap 0000000091fa6ff9 issued pAsLsXsFs (mask Xs)
+[22224.483717] ceph:  __touch_cap 000000006b5fd166 cap 0000000091fa6ff9 mds0
+[22224.483718] ceph:  __build_xattrs() len=0
+[22224.483718] ceph:  __get_xattr security.selinux: not found
+[22224.483720] ceph:  listxattr 000000006b5fd166 ver=1 index_ver=1
+[22224.483721] ceph:  __ceph_caps_issued_mask ino 0x1 cap 0000000091fa6ff9 issued pAsLsXsFs (mask Xs)
+[22224.483739] ceph:  __touch_cap 000000006b5fd166 cap 0000000091fa6ff9 mds0
+[22224.483740] ceph:  __build_xattrs() len=0
+[22224.483740] ceph:  __copy_xattr_names count=0
+[22224.483812] ceph:  do_getattr inode 000000006b5fd166 mask As mode 040755
+[22224.483813] ceph:  __ceph_caps_issued_mask ino 0x1 cap 0000000091fa6ff9 issued pAsLsXsFs (mask As)
+[22224.483814] ceph:  __touch_cap 000000006b5fd166 cap 0000000091fa6ff9 mds0
+[22224.483815] ceph:  open inode 000000006b5fd166 ino 1.fffffffffffffffe file 00000000791f8806 flags 65536 (100352)
+[22224.483816] ceph:  __ceph_caps_issued 000000006b5fd166 cap 0000000091fa6ff9 issued pAsLsXsFs
+[22224.483817] ceph:  open 000000006b5fd166 fmode 0 want p issued pAsLsXsFs using existing
+[22224.483818] ceph:  ceph_init_file_info 000000006b5fd166 00000000791f8806 040755 (dir)
+[22224.483821] ceph:  do_getattr inode 000000006b5fd166 mask AsXsFs mode 040755
+[22224.483822] ceph:  __ceph_caps_issued_mask ino 0x1 cap 0000000091fa6ff9 issued pAsLsXsFs (mask AsXsFs)
+[22224.483832] ceph:  __touch_cap 000000006b5fd166 cap 0000000091fa6ff9 mds0
+[22224.483835] ceph:  readdir 000000006b5fd166 file 00000000791f8806 pos 0
+[22224.483836] ceph:  readdir off 0 -> '.'
+[22224.483837] ceph:  readdir off 1 -> '..'
+[22224.483837] ceph:  readdir fetching 1.fffffffffffffffe frag 0 offset '(null)'
+[22224.483839] ceph:  do_request on 00000000865dbae1
+[22224.483840] ceph:  submit_request on 00000000865dbae1 for inode 0000000000000000
+[22224.483840] ceph:  reserve caps ctx=000000008dcd44fd need=20
+[22224.483842] ceph:  reserve caps ctx=000000008dcd44fd 22 = 2 used + 20 resv + 0 avail
+[22224.483843] ceph:  __register_request 00000000865dbae1 tid 4
+[22224.483843] ceph:  __choose_mds 000000006b5fd166 is_hash=1 (0x0) mode 2
+[22224.483844] ceph:  choose_frag(0) = 0
+[22224.483845] ceph:  __choose_mds 000000006b5fd166 1.fffffffffffffffe mds0 (auth cap 0000000091fa6ff9)
+[22224.483846] ceph:  do_request mds0 session 000000009680d5d3 state open
+[22224.483847] ceph:  __prepare_send_request 00000000865dbae1 tid 4 readdir (attempt 1)
+[22224.483848] ceph:   inode 000000006b5fd166 1.fffffffffffffffe
+[22224.483849] ceph:  encode_inode_release 000000006b5fd166 mds0 used|dirty p drop Fx unless -
+[22224.483850] ceph:  encode_inode_release 000000006b5fd166 cap 0000000091fa6ff9 pAsLsXsFs (force)
+[22224.483851] ceph:   r_parent = 0000000000000000
+[22224.483853] ceph:  do_request waiting
+[22224.485149] ceph:  handle_reply 00000000865dbae1
+[22224.485152] ceph:  __unregister_request 00000000865dbae1 tid 4
+[22224.485153] ceph:  handle_reply tid 4 result 0
+[22224.485154] ceph:  parsed dir dname 'test.txt'
+[22224.485155] ceph:  parsed dir dname 'test_trace.txt'
+[22224.485156] ceph:  get_inode on 1=1.fffffffffffffffe got 000000006b5fd166 new 0
+[22224.485157] ceph:  ceph_update_snap_trace deletion=0
+[22224.485158] ceph:  __lookup_snap_realm 1 0000000099df5954
+[22224.485158] ceph:  ceph_update_snap_trace 1 0000000099df5954 seq 1 unchanged
+[22224.485159] ceph:  done with 1 0000000099df5954, rebuild_snapcs=0, 00000000f784c160 00000000f784c160
+[22224.485160] ceph:  fill_trace 00000000865dbae1 is_dentry 0 is_target 1
+[22224.485161] ceph:  ceph_fill_inode 000000006b5fd166 ino 1.fffffffffffffffe v 20 had 20
+[22224.485162] ceph:  get_cap ctx=000000008dcd44fd (20) 22 = 2 used + 20 resv + 0 avail
+[22224.485164] ceph:  __ceph_caps_issued 000000006b5fd166 cap 0000000091fa6ff9 issued pAsLsXsFs
+[22224.485164] ceph:  add_cap 000000006b5fd166 mds0 cap 8 pAsLsXsFs seq 4
+[22224.485165] ceph:  __ceph_caps_issued 000000006b5fd166 cap 0000000091fa6ff9 issued pAsLsXsFs
+[22224.485166] ceph:  add_cap inode 000000006b5fd166 (1.fffffffffffffffe) cap 0000000091fa6ff9 pAsLsXsFs now pAsLsXsFs seq 4 mds0
+[22224.485168] ceph:  put_cap 00000000e281e274 22 = 3 used + 19 resv + 0 avail
+[22224.485168] ceph:  fill_trace done err=0
+[22224.485169] ceph:  readdir_prepopulate 2 items under dn 000000006e08304f
+[22224.485170] ceph:  d_lookup on parent=000000006e08304f name=test.txt got 0000000000000000
+[22224.485179] ceph:  d_alloc 000000006e08304f 'test.txt' = 00000000cebf0021
+[22224.485199] ceph:  alloc_inode 00000000de2b9de4
+[22224.485216] ceph:  get_inode on 1099511627776=10000000000.fffffffffffffffe got 00000000de2b9de4 new 1
+[22224.485217] ceph:  ceph_fill_inode 00000000de2b9de4 ino 10000000000.fffffffffffffffe v 32 had 0
+[22224.485218] ceph:  get_cap ctx=000000008dcd44fd (19) 22 = 2 used + 19 resv + 1 avail
+[22224.485226] ceph:  00000000de2b9de4 mode 0100644 uid.gid 1000.1000
+[22224.485227] ceph:  size 0 -> 17
+[22224.485227] ceph:  ceph_fill_file_size truncate_seq 0 -> 2
+[22224.485228] ceph:  ceph_fill_file_size truncate_size 0 -> 0, encrypted 0
+[22224.485229] ceph:  add_cap 00000000de2b9de4 mds0 cap 9 pAsLsXsFscr seq 1
+[22224.485230] ceph:  __lookup_snap_realm 1 0000000099df5954
+[22224.485230] ceph:  __cap_is_valid 00000000de2b9de4 cap 00000000e281e274 issued - but STALE (gen 0 vs 1)
+[22224.485231] ceph:  add_cap inode 00000000de2b9de4 (10000000000.fffffffffffffffe) cap 00000000e281e274 pAsLsXsFscr now pAsLsXsFscr seq 1 mds0
+[22224.485233] ceph:  __ceph_caps_issued_mask ino 0x10000000000 cap 00000000e281e274 issued pAsLsXsFscr (mask Xs)
+[22224.485234] ceph:  dn 00000000cebf0021 attached to 00000000de2b9de4 ino 10000000000.fffffffffffffffe
+[22224.485235] ceph:  update_dentry_lease 00000000cebf0021 duration 0 ms ttl 4300106680
+[22224.485236] ceph:  dentry_dir_lease_touch 000000005849e156 00000000cebf0021 'test.txt' (offset 0xff0b61080000002)
+[22224.485239] ceph:  readdir cache dn 00000000cebf0021 idx 0
+[22224.485239] ceph:  __ceph_caps_issued_mask ino 0x1 cap 0000000091fa6ff9 issued pAsLsXsFs (mask Fs)
+[22224.485241] ceph:  d_lookup on parent=000000006e08304f name=test_trace.txt got 000000001fc8d320
+[22224.485242] ceph:  ceph_fill_inode 0000000096c34c41 ino 10000000001.fffffffffffffffe v 36 had 36
+[22224.485242] ceph:  get_cap ctx=000000008dcd44fd (18) 22 = 3 used + 18 resv + 1 avail
+[22224.485243] ceph:  __ceph_caps_issued 0000000096c34c41 cap 000000004562469c issued pAsxLsXsxFsxcrwb
+[22224.485244] ceph:  add_cap 0000000096c34c41 mds0 cap 1 pAsxLsXsxFsxcrwb seq 2
+[22224.485245] ceph:  __ceph_caps_issued 0000000096c34c41 cap 000000004562469c issued pAsxLsXsxFsxcrwb
+[22224.485245] ceph:  add_cap inode 0000000096c34c41 (10000000001.fffffffffffffffe) cap 000000004562469c pAsxLsXsxFsxcrwb now pAsxLsXsxFsxcrwb seq 2 mds0
+[22224.485246] ceph:  put_cap 0000000088035025 22 = 4 used + 17 resv + 1 avail
+[22224.485247] ceph:  update_dentry_lease 000000001fc8d320 duration 0 ms ttl 4300106680
+[22224.485247] ceph:  dentry_dir_lease_touch 000000007691cbf4 000000001fc8d320 'test_trace.txt' (offset 0xff647c0e0000002)
+[22224.485248] ceph:  readdir cache dn 000000001fc8d320 idx 1
+[22224.485249] ceph:  readdir_prepopulate done
+[22224.485249] ceph:  unreserve caps ctx=000000008dcd44fd count=17
+[22224.485250] ceph:  __ceph_unreserve_caps: caps 22 = 3 used + 0 resv + 19 avail
+[22224.485285] ceph:  do_request waited, got 0
+[22224.485292] ceph:  do_request 00000000865dbae1 done, result 0
+[22224.485295] ceph:  readdir got and parsed readdir result=0 on frag 0, end=1, complete=1, hash_order=1
+[22224.485319] ceph:  note_last_dentry 'test_trace.txt'
+[22224.485321] ceph:  readdir frag 0 num 2 pos 2 chunk first ff0b61080000002
+[22224.485324] ceph:  readdir (0/2) -> ff0b61080000002 'test.txt' 000000006a47b641
+[22224.485329] ceph:  readdir (1/2) -> ff647c0e0000002 'test_trace.txt' 0000000062ee64a3
+[22224.485337] ceph:  put_cap_refs 000000006b5fd166 had p
+[22224.485341] ceph:   marking 000000006b5fd166 complete and ordered
+[22224.485343] ceph:  readdir 000000006b5fd166 file 00000000791f8806 done.
+[22224.485359] ceph:  do_getattr inode 000000006b5fd166 mask As mode 040755
+[22224.485360] ceph:  __ceph_caps_issued_mask ino 0x1 cap 0000000091fa6ff9 issued pAsLsXsFs (mask As)
+[22224.485360] ceph:  __touch_cap 000000006b5fd166 cap 0000000091fa6ff9 mds0
+[22224.485362] ceph:  d_revalidate 00000000cebf0021 'test.txt' inode 00000000de2b9de4 offset 0xff0b61080000002 nokey 0
+[22224.485363] ceph:  dentry_lease_is_valid - dentry 00000000cebf0021 = 0
+[22224.485364] ceph:  __ceph_caps_issued_mask ino 0x1 cap 0000000091fa6ff9 issued pAsLsXsFs (mask Fs)
+[22224.485364] ceph:  __touch_cap 000000006b5fd166 cap 0000000091fa6ff9 mds0
+[22224.485382] ceph:  dentry_dir_lease_touch 000000005849e156 00000000cebf0021 'test.txt' (offset 0xff0b61080000002)
+[22224.485382] ceph:  dir_lease_is_valid dir 000000006b5fd166 v2 dentry 00000000cebf0021 = 1
+[22224.485391] ceph:  d_revalidate 00000000cebf0021 valid
+[22224.485392] ceph:  do_getattr inode 00000000de2b9de4 mask AsLsFs mode 0100644
+[22224.485392] ceph:  __ceph_caps_issued_mask ino 0x10000000000 cap 00000000e281e274 issued pAsLsXsFscr (mask AsLsFs)
+[22224.485393] ceph:  __touch_cap 00000000de2b9de4 cap 00000000e281e274 mds0
+[22224.485394] ceph:  __ceph_caps_issued_mask ino 0x1 cap 0000000091fa6ff9 issued pAsLsXsFs (mask Fs)
+[22224.485397] ceph:  do_getattr inode 000000006b5fd166 mask As mode 040755
+[22224.485398] ceph:  __ceph_caps_issued_mask ino 0x1 cap 0000000091fa6ff9 issued pAsLsXsFs (mask As)
+[22224.485398] ceph:  __touch_cap 000000006b5fd166 cap 0000000091fa6ff9 mds0
+[22224.485399] ceph:  d_revalidate 00000000cebf0021 'test.txt' inode 00000000de2b9de4 offset 0xff0b61080000002 nokey 0
+[22224.485400] ceph:  dentry_lease_is_valid - dentry 00000000cebf0021 = 0
+[22224.485400] ceph:  __ceph_caps_issued_mask ino 0x1 cap 0000000091fa6ff9 issued pAsLsXsFs (mask Fs)
+[22224.485400] ceph:  __touch_cap 000000006b5fd166 cap 0000000091fa6ff9 mds0
+[22224.485401] ceph:  dentry_dir_lease_touch 000000005849e156 00000000cebf0021 'test.txt' (offset 0xff0b61080000002)
+[22224.485401] ceph:  dir_lease_is_valid dir 000000006b5fd166 v2 dentry 00000000cebf0021 = 1
+[22224.485402] ceph:  d_revalidate 00000000cebf0021 valid
+[22224.485404] ceph:  getxattr 00000000de2b9de4 name 'security.selinux' ver=1 index_ver=0
+[22224.485405] ceph:  __ceph_caps_issued_mask ino 0x10000000000 cap 00000000e281e274 issued pAsLsXsFscr (mask Xs)
+[22224.485405] ceph:  __touch_cap 00000000de2b9de4 cap 00000000e281e274 mds0
+[22224.485406] ceph:  __build_xattrs() len=0
+[22224.485413] ceph:  __ceph_destroy_xattrs p=0000000000000000
+[22224.485413] ceph:  __get_xattr security.selinux: not found
+[22224.485414] ceph:  __ceph_caps_issued_mask ino 0x1 cap 0000000091fa6ff9 issued pAsLsXsFs (mask Fs)
+[22224.485416] ceph:  do_getattr inode 000000006b5fd166 mask As mode 040755
+[22224.485416] ceph:  __ceph_caps_issued_mask ino 0x1 cap 0000000091fa6ff9 issued pAsLsXsFs (mask As)
+[22224.485417] ceph:  __touch_cap 000000006b5fd166 cap 0000000091fa6ff9 mds0
+[22224.485417] ceph:  d_revalidate 00000000cebf0021 'test.txt' inode 00000000de2b9de4 offset 0xff0b61080000002 nokey 0
+[22224.485418] ceph:  dentry_lease_is_valid - dentry 00000000cebf0021 = 0
+[22224.485418] ceph:  __ceph_caps_issued_mask ino 0x1 cap 0000000091fa6ff9 issued pAsLsXsFs (mask Fs)
+[22224.485419] ceph:  __touch_cap 000000006b5fd166 cap 0000000091fa6ff9 mds0
+[22224.485419] ceph:  dentry_dir_lease_touch 000000005849e156 00000000cebf0021 'test.txt' (offset 0xff0b61080000002)
+[22224.485420] ceph:  dir_lease_is_valid dir 000000006b5fd166 v2 dentry 00000000cebf0021 = 1
+[22224.485420] ceph:  d_revalidate 00000000cebf0021 valid
+[22224.485421] ceph:  listxattr 00000000de2b9de4 ver=1 index_ver=1
+[22224.485422] ceph:  __ceph_caps_issued_mask ino 0x10000000000 cap 00000000e281e274 issued pAsLsXsFscr (mask Xs)
+[22224.485422] ceph:  __touch_cap 00000000de2b9de4 cap 00000000e281e274 mds0
+[22224.485423] ceph:  __build_xattrs() len=0
+[22224.485423] ceph:  __copy_xattr_names count=0
+[22224.485424] ceph:  __ceph_caps_issued_mask ino 0x1 cap 0000000091fa6ff9 issued pAsLsXsFs (mask Fs)
+[22224.485426] ceph:  do_getattr inode 000000006b5fd166 mask As mode 040755
+[22224.485426] ceph:  __ceph_caps_issued_mask ino 0x1 cap 0000000091fa6ff9 issued pAsLsXsFs (mask As)
+[22224.485427] ceph:  __touch_cap 000000006b5fd166 cap 0000000091fa6ff9 mds0
+[22224.485428] ceph:  d_revalidate 000000001fc8d320 'test_trace.txt' inode 0000000096c34c41 offset 0xff647c0e0000002 nokey 0
+[22224.485428] ceph:  dentry_lease_is_valid - dentry 000000001fc8d320 = 1
+[22224.485429] ceph:  d_revalidate 000000001fc8d320 valid
+[22224.485430] ceph:  do_getattr inode 0000000096c34c41 mask AsLsFs mode 0100644
+[22224.485437] ceph:  __ceph_caps_issued_mask ino 0x10000000001 cap 000000004562469c issued pAsxLsXsxFsxcrwb (mask AsLsFs)
+[22224.485444] ceph:  __touch_cap 0000000096c34c41 cap 000000004562469c mds0
+[22224.485446] ceph:  do_getattr inode 000000006b5fd166 mask As mode 040755
+[22224.485446] ceph:  __ceph_caps_issued_mask ino 0x1 cap 0000000091fa6ff9 issued pAsLsXsFs (mask As)
+[22224.485447] ceph:  __touch_cap 000000006b5fd166 cap 0000000091fa6ff9 mds0
+[22224.485447] ceph:  d_revalidate 000000001fc8d320 'test_trace.txt' inode 0000000096c34c41 offset 0xff647c0e0000002 nokey 0
+[22224.485448] ceph:  dentry_lease_is_valid - dentry 000000001fc8d320 = 1
+[22224.485448] ceph:  d_revalidate 000000001fc8d320 valid
+[22224.485449] ceph:  getxattr 0000000096c34c41 name 'security.selinux' ver=1 index_ver=1
+[22224.485450] ceph:  __ceph_caps_issued_mask ino 0x10000000001 cap 000000004562469c issued pAsxLsXsxFsxcrwb (mask Xs)
+[22224.485450] ceph:  __touch_cap 0000000096c34c41 cap 000000004562469c mds0
+[22224.485450] ceph:  __build_xattrs() len=0
+[22224.485451] ceph:  __get_xattr security.selinux: not found
+[22224.485452] ceph:  do_getattr inode 000000006b5fd166 mask As mode 040755
+[22224.485452] ceph:  __ceph_caps_issued_mask ino 0x1 cap 0000000091fa6ff9 issued pAsLsXsFs (mask As)
+[22224.485453] ceph:  __touch_cap 000000006b5fd166 cap 0000000091fa6ff9 mds0
+[22224.485453] ceph:  d_revalidate 000000001fc8d320 'test_trace.txt' inode 0000000096c34c41 offset 0xff647c0e0000002 nokey 0
+[22224.485454] ceph:  dentry_lease_is_valid - dentry 000000001fc8d320 = 1
+[22224.485454] ceph:  d_revalidate 000000001fc8d320 valid
+[22224.485455] ceph:  listxattr 0000000096c34c41 ver=1 index_ver=1
+[22224.485455] ceph:  __ceph_caps_issued_mask ino 0x10000000001 cap 000000004562469c issued pAsxLsXsxFsxcrwb (mask Xs)
+[22224.485456] ceph:  __touch_cap 0000000096c34c41 cap 000000004562469c mds0
+[22224.485456] ceph:  __build_xattrs() len=0
+[22224.485456] ceph:  __copy_xattr_names count=0
+[22224.485476] ceph:  readdir 000000006b5fd166 file 00000000791f8806 pos ff647c0e0000003
+[22224.485477] ceph:  release inode 000000006b5fd166 dir file 00000000791f8806
+[22224.502516] ceph:  statfs
+[22224.503402] ceph:  kill_sb 0000000074c64218
+[22224.503404] ceph:  pre_umount
+[22224.503406] ceph:  request mdlog flush to mds0 (open)s seq 0
+[22224.503408] ceph:  flush_dirty_caps
+[22224.503409] ceph:  flush_dirty_caps 10000000001.fffffffffffffffe
+[22224.503411] ceph:  __ceph_caps_issued 0000000096c34c41 cap 000000004562469c issued pAsxLsXsxFsxcrwb
+[22224.503412] ceph:  check_caps 10000000001.fffffffffffffffe file_want pAsxXsxFsxcrwb used Fcb dirty Fw flushing - issued pAsxLsXsxFsxcrwb revoking - retain pAsxXsxFsxcrwb  FLUSH
+[22224.503413] ceph:   mds0 cap 000000004562469c used Fcb issued pAsxLsXsxFsxcrwb implemented pAsxLsXsxFsxcrwb revoking -
+[22224.503414] ceph:  flushing dirty caps
+[22224.503415] ceph:  __mark_caps_flushing flushing Fw, flushing_caps - -> Fw
+[22224.503415] ceph:   inode 0000000096c34c41 now !dirty
+[22224.503416] ceph:  __prep_cap 0000000096c34c41 cap 000000004562469c session 000000009680d5d3 pAsxLsXsxFsxcrwb -> pAsxXsxFsxcrwb (revoking -)
+[22224.503418] ceph:  encode_cap_msg update 1 10000000001 caps pAsxXsxFsxcrwb wanted pAsxXsxFsxcrwb dirty Fw seq 2/2 tid 2/2 mseq 0 follows 1 size 28/0 xattr_ver 4294959103 xattr_len 0
+[22224.503420] ceph:  __ceph_caps_issued 0000000096c34c41 cap 000000004562469c issued pAsxXsxFsxcrwb
+[22224.503421] ceph:  check_caps 10000000001.fffffffffffffffe file_want pAsxXsxFsxcrwb used Fcb dirty - flushing Fw issued pAsxXsxFsxcrwb revoking - retain pAsxXsxFsxcrwb  FLUSH
+[22224.503422] ceph:  flush_dirty_caps done
+[22224.503422] ceph:  wait_requests done
+[22224.503468] ceph:  writepages_start 0000000096c34c41 (mode=NONE)
+[22224.503470] ceph:   head snapc 00000000d8b781fd has 1 dirty pages
+[22224.503471] ceph:   oldest snapc is 00000000d8b781fd seq 1 (0 snaps)
+[22224.503472] ceph:   not cyclic, 0 to 2251799813685247
+[22224.503484] ceph:  pagevec_lookup_range_tag got 1
+[22224.503484] ceph:  ? 000000000828fb14 idx 0
+[22224.503513] ceph:  0000000096c34c41 will write page 000000000828fb14 idx 0
+[22224.503513] ceph:  reached end fbatch, trying for more
+[22224.503514] ceph:  pagevec_lookup_range_tag got 0
+[22224.503528] ceph:  writepages got pages at 0~28
+[22224.503537] ceph:  folio_batch release on 0 folios (0000000000000000)
+[22224.503538] ceph:  pagevec_lookup_range_tag got 0
+[22224.503538] ceph:  writepages dend - startone, rc = 0
+[22224.503539] ceph:  write_inode 0000000096c34c41 wait=0
+[22224.503540] ceph:  __cap_delay_requeue_front 0000000096c34c41
+[22224.503579] ceph:  sync_fs (non-blocking)
+[22224.503581] ceph:  flush_dirty_caps
+[22224.503581] ceph:  flush_dirty_caps done
+[22224.503582] ceph:  sync_fs (non-blocking) done
+[22224.505875] ceph:  writepages_finish 0000000096c34c41 rc 0
+[22224.505878] ceph:  __ceph_caps_issued 0000000096c34c41 cap 000000004562469c issued pAsxXsxFsxcrwb
+[22224.505889] ceph:  unlocking 000000000828fb14
+[22224.505890] ceph:  writepages_finish 0000000096c34c41 wrote 28 bytes cleaned 1 pages
+[22224.505891] ceph:  put_wrbuffer_cap_refs on 0000000096c34c41 head 1/1 -> 0/0  LAST
+[22224.505893] ceph:  __ceph_caps_issued 0000000096c34c41 cap 000000004562469c issued pAsxXsxFsxcrwb
+[22224.505894] ceph:  check_caps 10000000001.fffffffffffffffe file_want pAsxXsxFsxcrwb used Fc dirty - flushing Fw issued pAsxXsxFsxcrwb revoking - retain pAsxXsxFsxcrwb  FLUSH
+[22224.505895] ceph:   mds0 cap 000000004562469c used Fc issued pAsxXsxFsxcrwb implemented pAsxXsxFsxcrwb revoking -
+[22224.505903] ceph:  sync_fs (blocking)
+[22224.505905] ceph:  sync
+[22224.505905] ceph:  flush_dirty_caps
+[22224.505906] ceph:  flush_dirty_caps done
+[22224.505906] ceph:  sync want tid 4 flush_seq 2
+[22224.505907] ceph:  flush_mdlog_and_wait_mdsc_unsafe_requests want 4
+[22224.505908] ceph:  flush_mdlog_and_wait_mdsc_unsafe_requests done
+[22224.505908] ceph:  check_caps_flush want 2
+[22224.505909] ceph:  check_caps_flush still flushing tid 2 <= 2
+[22224.505909] ceph:  check_caps_flush still flushing tid 2 <= 2
+[22224.506610] ceph:  handle_caps from mds0
+[22224.506613] ceph:   op flush_ack ino 10000000001.fffffffffffffffe inode 0000000096c34c41
+[22224.506614] ceph:   mds0 seq 1 cap seq 2
+[22224.506616] ceph:  handle_cap_flush_ack inode 0000000096c34c41 mds0 seq 2 on Fw cleaned Fw, flushing Fw -> -
+[22224.506617] ceph:   inode 0000000096c34c41 now !flushing
+[22224.506617] ceph:   inode 0000000096c34c41 now clean
+[22224.506632] ceph:  check_caps_flush ok, flushed thru 2
+[22224.506634] ceph:  sync_fs (blocking) done
+[22224.506637] ceph:  ceph_d_prune test.txt 00000000cebf0021
+[22224.506639] ceph:  evict_inode 00000000de2b9de4 ino 10000000000.fffffffffffffffe
+[22224.506640] ceph:  __ceph_remove_cap 00000000e281e274 from 00000000de2b9de4
+[22224.506642] ceph:  __cap_delay_cancel 00000000de2b9de4
+[22224.506642] ceph:  __ceph_destroy_xattrs p=0000000000000000
+[22224.506660] ceph:  d_release 00000000cebf0021
+[22224.506661] ceph:  ceph_d_prune test_trace.txt 000000001fc8d320
+[22224.506662] ceph:  evict_inode 0000000096c34c41 ino 10000000001.fffffffffffffffe
+[22224.506666] ceph:  __ceph_remove_cap 000000004562469c from 0000000096c34c41
+[22224.506667] ceph:  __cap_delay_cancel 0000000096c34c41
+[22224.506667] ceph:  __ceph_destroy_xattrs p=0000000000000000
+[22224.506668] ceph:  d_release 000000001fc8d320
+[22224.506669] ceph:  ceph_d_prune / 000000006e08304f
+[22224.506670] ceph:  evict_inode 000000006b5fd166 ino 1.fffffffffffffffe
+[22224.506671] ceph:  __ceph_remove_cap 0000000091fa6ff9 from 000000006b5fd166
+[22224.506672] ceph:  __destroy_snap_realm 0000000099df5954 1
+[22224.506673] ceph:  __cap_delay_cancel 000000006b5fd166
+[22224.506673] ceph:  __ceph_destroy_xattrs p=0000000000000000
+[22224.506674] ceph:  d_release 000000006e08304f
+[22224.506675] ceph:  sync_fs (non-blocking)
+[22224.506676] ceph:  flush_dirty_caps
+[22224.506676] ceph:  flush_dirty_caps done
+[22224.506676] ceph:  sync_fs (non-blocking) done
+[22224.506677] ceph:  sync_fs (blocking)
+[22224.506678] ceph:  sync
+[22224.506678] ceph:  flush_dirty_caps
+[22224.506678] ceph:  flush_dirty_caps done
+[22224.506679] ceph:  sync want tid 4 flush_seq 2
+[22224.506688] ceph:  flush_mdlog_and_wait_mdsc_unsafe_requests want 4
+[22224.506689] ceph:  flush_mdlog_and_wait_mdsc_unsafe_requests done
+[22224.506689] ceph:  check_caps_flush want 2
+[22224.506689] ceph:  check_caps_flush ok, flushed thru 2
+[22224.506690] ceph:  sync_fs (blocking) done
+[22224.506691] ceph:  put_super
+[22224.506691] ceph:  close_sessions
+[22224.506692] ceph:  request_close_session mds0 state closing seq 1
+[22224.506694] ceph:  waiting for sessions to close
+[22224.509326] ceph:  __unregister_session mds0 000000009680d5d3
+[22224.509335] ceph:  handle_session mds0 close 000000009680d5d3 state closing seq 0
+[22224.509337] ceph:  cleanup_session_requests mds0
+[22224.509337] ceph:  remove_session_caps on 000000009680d5d3
+[22224.509338] ceph:  iterate_session_caps 000000009680d5d3 mds0
+[22224.509339] ceph:  dispose_cap_releases mds0
+[22224.509339] ceph:  put_cap 00000000e281e274 22 = 3 used + 0 resv + 19 avail
+[22224.509340] ceph:  put_cap 000000004562469c 22 = 2 used + 0 resv + 20 avail
+[22224.509341] ceph:  put_cap 0000000091fa6ff9 22 = 1 used + 0 resv + 21 avail
+[22224.509350] ceph:  kick_requests mds0
+[22224.509358] ceph:  stopped
+[22224.509486] ceph:  ceph_fs_debugfs_cleanup
+[22224.509500] ceph:  destroy_fs_client 00000000fbf4a880
+[22224.509501] ceph:  mdsc_destroy 0000000028165e01
+[22224.509503] ceph:  stop
+[22224.509523] ceph:  mdsc_destroy 0000000028165e01 done
+[22224.509546] ceph:  destroy_mount_options 00000000d5c8dd09
+[22224.509686] ceph:  destroy_fs_client 00000000fbf4a880 done
+[22837.745161] mini_init (319): drop_caches: 1

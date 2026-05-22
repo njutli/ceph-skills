@@ -556,18 +556,32 @@ ceph -c ceph.conf -k keyring -s
 ceph -c ceph.conf -k keyring osd pool create testpool 8
 
 # 2. 写入对象
-ceph -c ceph.conf -k keyring rados -p testpool put myobject /etc/hostname
+rados -c ceph.conf -k keyring -p testpool put myobject /etc/hostname
 
 # 3. 查看对象位置
 ceph -c ceph.conf -k keyring osd map testpool myobject
-# 输出: osdmap eXX pool 'testpool' (X) object 'myobject' -> pg X.XXXXXXXX -> up [0,1,2] acting [0,1,2]
+# 输出示例:
+# osdmap e59 pool 'testpool' (4) object 'myobject' -> pg 4.5da41c62 (4.2) -> up ([1,0,2], p1) acting ([1,0,2], p1)
+#
+# 结果解读:
+# - osdmap e59: 当前使用的是第 59 版 OSD 映射表 (每次拓扑变化版本号增加)。
+# - pool 'testpool' (4): 目标池名称为 testpool，其内部 ID 为 4。
+# - pg 4.5da41c62 (4.2): 对象被哈希分配到池 4 的第 2 号 PG。
+# - up ([1,0,2], p1): 当前服务该 PG 的 OSD 列表。
+#   * [1,0,2]: OSD 集合。
+#   * p1: 表示列表索引 1 处的 OSD (即 OSD.0) 是 Primary (主节点)，负责处理读写。
+# - acting ([1,0,2], p1): 实际存储数据的 OSD 列表。若与 up 一致，说明数据分布健康。
 
 # 4. 读取对象
-ceph -c ceph.conf -k keyring rados -p testpool get myobject /tmp/myobject
+rados -c ceph.conf -k keyring -p testpool get myobject /tmp/myobject
 cat /tmp/myobject
 
 # 5. 删除对象
-ceph -c ceph.conf -k keyring rados -p testpool rm myobject
+rados -c ceph.conf -k keyring -p testpool rm myobject
+
+# 6. 删除测试 pool (清理环境)
+ceph -c ceph.conf -k keyring osd pool rm testpool testpool --yes-i-really-really-mean-it
+# 注意: Ceph 为了防止误删，要求重复输入 pool 名称并添加确认参数
 ```
 
 ### 5.5 观察数据流
@@ -588,18 +602,49 @@ ceph -c ceph.conf -k keyring osd dump
 
 ### 5.6 故障模拟
 
-```bash
-# 停止一个 OSD 观察恢复
-# 方法1: 使用杀进程的方式
-kill -STOP $(pgrep -f "ceph-osd.*-i 1")
-# 观察 PG 状态变化: active+clean → active+degraded → active+clean (恢复后)
+#### 5.6.1 模拟 OSD 进程假死与恢复
+通过发送信号控制 OSD 进程状态，模拟节点故障。
 
-# 恢复 OSD
+```bash
+# 1. 暂停 OSD.1 (模拟进程假死/网络阻塞)
+# 进程仍在内存中，但停止响应，心跳中断
+kill -STOP $(pgrep -f "ceph-osd.*-i 1")
+
+# 2. 恢复 OSD.1 (模拟网络恢复/进程解冻)
 kill -CONT $(pgrep -f "ceph-osd.*-i 1")
 
-# 查看事件
+# 3. 在另一终端观察集群事件
 ceph -c ceph.conf -k keyring -w
 ```
+
+#### 5.6.2 故障恢复日志解析
+以下是执行上述操作时，`ceph -w` 捕获的典型日志流。展示了 Ceph 从**故障检测**到**自动恢复**的完整过程：
+
+```text
+# 阶段 1：故障检测 (10:27:44)
+2026-05-22T10:27:44.086233+0800 mon.a [INF] osd.1 failed (root=default,host=LI-PC) (2 reporters from different osd after 29.000199 >= grace 20.000000)
+# 解析：其他 OSD 发现 OSD.1 心跳超时，在等待 20 秒 (grace) 后向 MON 报告。MON 判定 OSD.1 失效。
+
+# 阶段 2：状态降级 (10:27:44 - 10:27:47)
+2026-05-22T10:27:44.139095+0800 mon.a [WRN] Health check failed: 1 osds down (OSD_DOWN)
+2026-05-22T10:27:47.361547+0800 mon.a [WRN] Health check failed: Degraded data redundancy: 10/72 objects degraded (13.889%), 6 pgs degraded (PG_DEGRADED)
+# 解析：集群变为 HEALTH_WARN。OSD.1 离线导致部分 PG 副本数不足 (降级)，此时集群仍可读写，但冗余度降低。
+
+# 阶段 3：进程恢复与重连 (10:27:54 - 10:27:56)
+2026-05-22T10:27:54.823215+0800 osd.1 [WRN] Monitor daemon marked osd.1 down, but it is still running
+2026-05-22T10:27:54.823705+0800 mon.a [INF] osd.1 marked itself dead as of e81
+2026-05-22T10:27:56.203385+0800 mon.a [INF] osd.1 ... boot
+# 解析：执行 kill -CONT 后，OSD.1 解冻并发现自己被标记为 down。它主动向 MON 发起重新注册 (Boot)。
+
+# 阶段 4：数据同步与健康恢复 (10:28:03 - 10:28:05)
+2026-05-22T10:28:03.323020+0800 mon.a [WRN] Health check update: Degraded data redundancy: 7/75 objects degraded...
+2026-05-22T10:28:05.407304+0800 mon.a [INF] Cluster is now healthy
+# 解析：OSD.1 重新上线后，从其他 OSD 拉取缺失数据 (Recovery)。约 10 秒后同步完成，集群恢复 HEALTH_OK。
+```
+
+**关键结论：**
+*   **`kill -STOP` 模拟的是“假死”**：因为进程未退出，数据完整，恢复时无需重新加载数据，速度极快。
+*   **自愈能力验证**：Ceph 能自动检测故障、降级服务以保证可用性，并在节点恢复后自动补齐数据，无需人工干预。
 
 ### 5.7 停止集群
 
@@ -695,23 +740,61 @@ ceph fs status
 
 # 4. 挂载 CephFS (内核客户端)
 sudo mkdir -p /mnt/cephfs
-sudo mount -t ceph 127.0.0.1:6789:/ /mnt/cephfs \
-    -o name=admin,secret=$(ceph auth get-key client.admin)
+# 4.1 使用v1端口挂载
+sudo mount -t ceph 127.0.0.1:40504:/ /mnt/cephfs \
+    -o name=admin,secret=$(ceph auth get-key client.admin),fs=myfs
+# 4.2 使用v2端口挂载
+sudo mount -t ceph 127.0.0.1:40503:/ /mnt/cephfs \
+    -o name=admin,secret=$(ceph auth get-key client.admin),fs=myfs,ms_mode=secure
+# 挂载命令参数详解:
+#   -t ceph          : 指定文件系统类型为 ceph (使用内核 cephfs 模块)
+#   127.0.0.1:6789:/ : MON 地址及挂载的 CephFS 根目录
+#   /mnt/cephfs      : 本地挂载点
+#   -o name=admin    : 指定认证用户为 admin
+#   secret=$(...)    : 通过命令替换获取 admin 用户的密钥 (secret)
+#   mds_namespace=   : 指定要挂载哪个文件系统
+#
+# ⚠️ MON 端口确认: vstart 动态分配端口，不一定是默认 6789/3300
+# 用 ceph mon dump 查看实际端口:
+#   $ ceph mon dump
+#   0: [v2:127.0.0.1:40503/0,v1:127.0.0.1:40504/0] mon.a
+#       ↑ MSGR2 协议      ↑ v1 兼容协议 (内核 mount -t ceph 用此端口)
+#   内核客户端走 v1 协议，从输出中取 v1 地址替换上面的 6789 即可。
+#   任意 MON 均可，客户端只需连一个就能获取全集群地图。
 
 # 5. 验证挂载
 df -h /mnt/cephfs
+# Filesystem         Size  Used Avail Use% Mounted on
+# 127.0.0.1:40503:/ 1012M     0 1012M   0% /mnt/cephfs
+# CephFS 容量来源解析:
+# ┌─────────────────────────────────────────────┐
+# │ df 显示 1012M ≈ 1 GiB                        │
+# │                                             │
+# │ 计算公式:                                    │
+# │   每个 OSD 容量 = memstore_device_bytes      │
+# │                = 1_G (代码硬编码默认值)       │
+# │   3 OSD × 1 GiB = 3 GiB 原始容量             │
+# │   3 GiB ÷ 副本数(size=3) = 1 GiB 可用        │
+# │                                             │
+# │ memstore 无实际磁盘，容量由配置决定:           │
+# │   src/common/options/global.yaml.in:4010     │
+# │   memstore_device_bytes 默认值 = 1_G         │
+# │   MemStore.cc:231  statfs 返回此值           │
+# │                                             │
+# │ 可在 ceph.conf 中覆盖:                       │
+# │   memstore_device_bytes = 10_G               │
+# └─────────────────────────────────────────────┘
 echo "hello cephfs" > /mnt/cephfs/test.txt
 cat /mnt/cephfs/test.txt
 ```
-
 **CephFS 数据流详解 (方案A)：**
 
 ```
 mount -t ceph 127.0.0.1:6789:/ /mnt/cephfs
 
 阶段 1: 挂载 (仅一次)
-  客户端 → MON (127.0.0.1:6789)
-    获取: monmap, osdmap, mdsmap
+  客户端 → MON (v1 端口, 用 ceph mon dump 确认)
+     获取: monmap, osdmap, mdsmap
   客户端 → MDS (127.0.0.1:6804)
     建立会话，获取根 inode (CEPH_INO_ROOT = 1)
     MDS 授予 Capability (FILE_CACHE, FILE_RD)
