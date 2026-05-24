@@ -840,6 +840,28 @@ mount -t ceph 127.0.0.1:6789:/ /mnt/cephfs
 
 ## 六、方案 B: cephadm 单节点部署
 
+> **方案A vs 方案B 的 ceph 命令对比:**
+>
+> ```
+> ┌─────────────────────────────────────────────────────────┐
+> │                                                        │
+> │   方案A: ceph = 自编译二进制                             │
+> │     ~/ceph/build/bin/ceph (开发版 21.x)                 │
+> │     通过 ./ceph.conf + ./keyring 连接本地 vstart 集群    │
+> │     所有子命令均可使用                                   │
+> │                                                        │
+> │   方案B: ceph 分两个运行环境                             │
+> │     ┌─ 宿主机: cephadm 编排工具 (apt 安装)              │
+> │     │    ceph orch daemon add osd ...  (部署 OSD)       │
+> │     │    cephadm rm-cluster ...        (销毁集群)       │
+> │     │                                                  │
+> │     └─ 容器内: ceph CLI (cephadm shell 进入)            │
+> │          ceph -s, ceph osd df, rados ... (集群操作)     │
+> │          容器自带 Ceph 二进制，版本与集群一致             │
+> │                                                        │
+> └─────────────────────────────────────────────────────────┘
+> ```
+
 ### 6.1 安装 Ceph 包
 
 ```bash
@@ -858,8 +880,8 @@ sudo apt install -y cephadm
 HOST_IP=$(hostname -I | awk '{print $1}')
 echo $HOST_IP   # 例如: 192.168.1.162
 
-# Bootstrap (单节点模式)
-sudo cephadm bootstrap --mon-ip $HOST_IP --single-host-defaults
+# Bootstrap (单节点模式, 自动检测 docker/podman 容器运行时)
+sudo cephadm bootstrap --mon-ip $HOST_IP --single-host-defaults --skip-mon-network
 
 # --single-host-defaults 自动设置:
 #   osd_crush_chooseleaf_type = 0  (允许同主机多 OSD)
@@ -881,21 +903,91 @@ for i in 0 1 2; do
     sudo losetup /dev/loop${i} /var/local/osd${i}.img
 done
 
-# 使用 loop 设备创建 OSD (块设备模式: 以 /dev/ 开头 → 裸盘 bluestore)
-sudo ceph orch daemon add osd /dev/loop0:/dev/loop1:/dev/loop2
-
-# 或使用目录模式 (非 /dev/ 路径 → 目录模拟 bluestore，不推荐生产)
-sudo mkdir -p /var/local/osd{0,1,2}
 HOST=$(hostname)
+
+# 方式1: 块设备 + raw 模式 (绕过 LVM，推荐学习环境)
+#   --method raw 直接调用 bluestore 初始化，绕过 ceph-volume LVM 层
+sudo ceph orch daemon add osd $HOST:/dev/loop0 --method raw
+sudo ceph orch daemon add osd $HOST:/dev/loop1 --method raw
+sudo ceph orch daemon add osd $HOST:/dev/loop2 --method raw
+
+# 方式2: 块设备 + LVM 模式 (默认，生产推荐)
+# ⚠️ 已知 Bug: ceph-volume lvm batch 在部分版本（含 v19.2.3）中即使对全新设备也报错:
+#   IndexError: list index out of range  → get_lvm_osds() 内部分支逻辑缺陷
+#   这是 ceph-volume 自身 bug，与设备是否残留数据无关 (v17.2.7 首次报告, v18.2.1 修复, v19.2.3 仍有回归)
+#
+#   绕行方案2a: 手动创建 LVM，再将 LV 路径提供给 ceph (绕过自动检测 Bug)
+#     sudo pvcreate /dev/loop0
+#     sudo vgcreate ceph-vg-loop0 /dev/loop0
+#     sudo lvcreate -l 100%FREE -n osd-lv-loop0 ceph-vg-loop0
+#     sudo ceph orch daemon add osd $HOST:/dev/ceph-vg-loop0/osd-lv-loop0
+#
+#   根治方案2b: 升级 Ceph 到 v18.2.1+ (v17.2.7 首次报告, v18.2.1 已修复)
+#     社区反馈 Reef 及更高版本已修复该 ceph-volume bug
+
+# 方式3: 目录模式 (最简单，学习环境首选)
+sudo mkdir -p /var/local/osd{0,1,2}
 sudo ceph orch daemon add osd $HOST:/var/local/osd0
 sudo ceph orch daemon add osd $HOST:/var/local/osd1
 sudo ceph orch daemon add osd $HOST:/var/local/osd2
+#   原理: bluestore 在该目录下创建文件模拟块设备，与方案A的 memstore 不同
+#         (方案A vstart 用 memstore 直接写内存，bluestore 更接近生产)
 
-# cephadm 区分方式:
+# 方案A vs 方案B OSD 创建路径差异:
+#   方案A: ceph-osd --mkfs  → 直接初始化 (memstore/bluestore)
+#   方案B: ceph orch daemon  →  ceph-volume lvm batch  → ceph-osd --mkfs
+#          (中间多了 LVM 管理层，用于多磁盘标签管理、自动分区等生产功能)
+#   同一份源码，方案B多包了一层 LVM 工具。
+
+# cephadm 区分 OSD 类型:
 #   参数以 /dev/ 开头 → 块设备 OSD (独占整个磁盘)
 #   参数以路径开头    → 目录 OSD (在该目录下创建文件模拟磁盘)
 ```
 
+### 6.3.1 进程与容器关系
+
+cephadm **不直接在宿主机跑进程**，所有 daemon 运行在独立容器中：
+
+```
+宿主机 (WSL2)
+│
+├─ /usr/bin/cephadm              ← 编排工具 (apt 安装)
+│
+├─ docker/podman 管理的容器:
+│   ├─ 核心 (bootstrap 创建):
+│   │   ├─ ceph-<fsid>-mon.<host>      ← MON (1个)
+│   │   ├─ ceph-<fsid>-mgr.<host>-xxxx ← MGR 主 (1个)
+│   │   ├─ ceph-<fsid>-mgr.<host>-yyyy ← MGR 备 (1个, 自动接管)
+│   │   └─ ceph-<fsid>-crash.<host>    ← crash 日志收集
+│   │
+│   ├─ OSD (orch add osd 创建):
+│   │   ├─ ceph-<fsid>-osd.0           ← OSD.0
+│   │   ├─ ceph-<fsid>-osd.1           ← OSD.1
+│   │   └─ ceph-<fsid>-osd.2           ← OSD.2
+│   │
+│   └─ 监控栈 (bootstrap 自动拉起):
+│       ├─ ceph-<fsid>-prometheus.<host>
+│       ├─ ceph-<fsid>-grafana.<host>        (Web 仪表盘 :3000)
+│       ├─ ceph-<fsid>-alertmanager.<host>
+│       ├─ ceph-<fsid>-node-exporter.<host>  (宿主机指标)
+│       └─ ceph-<fsid>-ceph-exporter.<host>  (Ceph 专属指标)
+│
+└─ /etc/ceph/                    ← bootstrap 生成的配置和 keyring
+
+# 容器名后缀 (如 xxxx/yyyy) 是 cephadm 随机生成的无意义字符串，仅用于区分同名 daemon
+```
+
+> cephadm bootstrap 默认拉起核心 + 监控栈共约 9 个容器。OSD/MDS 需后续手动添加。
+
+```bash
+# 查看各 daemon 运行状态
+sudo cephadm ls                          # cephadm 视角: 所有服务及容器
+sudo docker ps                           # 容器视角 (或用 podman ps)
+sudo systemctl list-units 'ceph-*'       # systemd 视角: 每个容器一个单元
+
+# 进入某个容器查看内部进程和日志
+sudo docker exec -it <容器名> bash       # 容器内部通常只有一个 ceph 进程
+```
 ### 6.4 验证
 
 ```bash
@@ -955,23 +1047,25 @@ ceph auth get-key client.admin > /tmp/ceph.admin.key
 **在 WSL 中挂载 CephFS：**
 
 ```bash
-# 1. 确保 WSL 安装了 ceph-common
-sudo apt install -y ceph-common
+# 1. 获取 admin key 和 MON 地址
+KEY=$(sudo cephadm shell -- ceph auth get-key client.admin 2>/dev/null)
+MON_IP=$(sudo cephadm shell -- ceph mon dump 2>/dev/null | grep "mon\." | sed 's/.*v1://' | cut -d/ -f1 | head -1)
+echo "MON: $MON_IP    KEY: $KEY"
 
-# 2. 复制 keyring 到 WSL
-sudo cephadm shell -- ceph auth get-key client.admin | sudo tee /etc/ceph/ceph.client.admin.keyring
+# 2. 删除可能存在的错误格式 keyring (避免 mount 尝试读它)
+sudo rm -f /etc/ceph/ceph.client.admin.keyring
 
-# 3. 获取 MON 地址 (容器 IP)
-sudo cephadm shell -- ceph mon dump | grep mon
-
-# 4. 挂载 CephFS
+# 3. 挂载 CephFS
 sudo mkdir -p /mnt/cephfs
-sudo mount -t ceph <MON_CONTAINER_IP>:6789:/ /mnt/cephfs \
-    -o name=admin,secret=$(cat /etc/ceph/ceph.client.admin.keyring)
+sudo mount -t ceph ${MON_IP}:/ /mnt/cephfs \
+    -o name=admin,secret=$KEY
 
-# 5. 验证
-echo "hello from cephadm" > /mnt/cephfs/test.txt
-cat /mnt/cephfs/test.txt
+# 4. 验证 (挂载点为 root 所有, 需用 sudo tee)
+echo "hello from cephadm" | sudo tee /mnt/cephfs/test.txt
+sudo cat /mnt/cephfs/test.txt
+
+# 4. 卸载
+sudo umount /mnt/cephfs
 ```
 
 **CephFS 数据流详解 (方案B)：**
