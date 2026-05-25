@@ -862,6 +862,39 @@ mount -t ceph 127.0.0.1:6789:/ /mnt/cephfs
 > └─────────────────────────────────────────────────────────┘
 > ```
 
+> **ceph/ceph vs ceph/daemon vs cephadm 三者关系:**
+>
+> ```
+> 三者是层层演进的关系，而非并列可选方案:
+>
+> ceph/ceph (基础镜像)
+>   │  包含所有 Ceph 二进制 (mon/osd/mds/mgr/rados) 及 NFS-Ganesha、iSCSI 组件
+>   │  基于 CentOS, 每个 Ceph 版本发布后 24 小时内自动构建
+>   │  支持多架构: amd64 / arm64
+>   │  Tag 体系 (http://hub.docker.com/r/ceph/ceph):
+>   │    - v12.2.9-20181026  : 完整版本号+构建日期, 生产推荐 (精确控制升级)
+>   │    - v12               : 主版本号, 始终指向该大版本最新构建
+>   │    - v12.2             : 次版本号, 指向该次版本最新 bugfix 构建
+>   │    构建日期后缀 YYYYMMDD, 基础镜像更新时自动重新构建
+>   │  镜像源: github.com/ceph/ceph-container (已废弃), 现移到 github.com/ceph/ceph
+>   │  最后更新: 2021年7月 (v16.2.5 Pacific), 之后停止推送到 Docker Hub
+>   │  新版本镜像全部迁至 quay.io/ceph/ceph
+>   │
+>   ├─→ ceph/daemon (旧部署方案, 2016-2020)
+>   │     = ceph/ceph + 启动脚本
+>   │     用户手动 docker run -e MON_IP=... ceph/daemon mon
+>   │     ❌ 已废弃, GitHub archived, 不再维护
+>   │
+>   └─→ cephadm (新部署方案, 2020至今)
+>         = 用同一个 quay.io/ceph/ceph 镜像 + Python 编排工具
+>         只下一个镜像 (约 1.2GB)，通过切换 entrypoint 启动不同 daemon:
+>           --entrypoint /usr/bin/ceph-mon  → MON 容器
+>           --entrypoint /usr/bin/ceph-mgr  → MGR 容器
+>           --entrypoint /usr/bin/ceph-osd  → OSD 容器
+>         一条 cephadm bootstrap 自动拉起全套
+>         ✅ 当前官方推荐, 方案B使用的就是这个
+> ```
+
 ### 6.1 安装 Ceph 包
 
 ```bash
@@ -988,6 +1021,35 @@ sudo systemctl list-units 'ceph-*'       # systemd 视角: 每个容器一个单
 # 进入某个容器查看内部进程和日志
 sudo docker exec -it <容器名> bash       # 容器内部通常只有一个 ceph 进程
 ```
+### 6.3.2 用 Kata 容器运行时 (实验性)
+
+> Kata Containers 用轻量级 VM 替代容器，提供更强的隔离性。如果希望 Ceph 容器跑在 Kata VM 中：
+
+```bash
+# 1. 安装 Kata
+sudo apt install -y kata-containers
+
+# 2. 验证 runtime 可用
+docker info | grep Runtime   # 应看到 kata-runtime
+
+# 3. 指定 Kata 运行 Ceph 容器
+#   方式A: docker run 时加 --runtime=kata
+docker run --rm --runtime=kata --privileged \
+    -v /dev:/dev --net=host quay.io/ceph/ceph:v19 ceph-mon -i a
+
+#   方式B: 设 Kata 为 Docker 默认运行时 (/etc/docker/daemon.json)
+#     { "default-runtime": "kata-runtime" }
+#     之后 cephadm 拉起的容器自动用 Kata
+```
+
+> ⚠️ **不建议在生产/学习环境用 Kata 跑 Ceph：**
+>
+> - OSD 需要 `--privileged` + `/dev:/dev` 直通块设备，Kata 的 VM 层对此支持不完善
+> - MON 依赖 `--net=host` 网络模式，Kata VM 与宿主机网络隔离，host 模式可能失效
+> - cephadm 为 docker/podman 设计，未适配 Kata runtime，可能遇到未知兼容问题
+>
+> 如果仅为了学习 Kata，建议用普通容器跑方案B，另起一个简单无状态容器验证 `kata-runtime` 即可。
+
 ### 6.4 验证
 
 ```bash
